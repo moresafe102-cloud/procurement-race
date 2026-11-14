@@ -1,7 +1,7 @@
 name: تحديث بيانات حلبة المشتريات
 on:
   schedule:
-    - cron: "55 * * * *"
+    - cron: "25,55 * * * *"
   workflow_dispatch: {}
 permissions:
   contents: write
