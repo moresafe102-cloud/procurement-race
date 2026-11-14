@@ -24,3 +24,4 @@ jobs:
           git add data.json index.html
           git diff --cached --quiet || git commit -m "تحديث الموقع $(date -u +'%Y-%m-%d %H:%M')"
           git push
+
