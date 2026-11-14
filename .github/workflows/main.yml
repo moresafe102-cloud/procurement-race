@@ -1,7 +1,7 @@
 name: تحديث بيانات حلبة المشتريات
 on:
   schedule:
-    - cron: "55 * * * *"   # every hour
+    - cron: "55 * * * *"
   workflow_dispatch: {}
 permissions:
   contents: write
@@ -10,15 +10,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Download latest data from Google Drive
+      - name: Download latest data and page from Google Drive
         run: |
           curl -sSL "https://drive.google.com/uc?export=download&id=1PCWlB1WduLcX0XsVY1u1biEgJQR7GXlf" -o new.json
           python3 -c "import json;d=json.load(open('new.json'));assert d['buyers'] and d['q'];print(len(d['q']),'quotes, updated',d.get('updated'))"
           mv new.json data.json
+          curl -sSL "https://drive.google.com/uc?export=download&id=1YLpvI3jVU8DqOS0EI_3u8dOqulb19_vL" -o new.html
+          if grep -q "data.json" new.html && grep -q "</html>" new.html; then mv new.html index.html; else echo "page not updated"; rm -f new.html; fi
       - name: Commit if changed
         run: |
           git config user.name "procurement-bot"
           git config user.email "bot@users.noreply.github.com"
-          git add data.json
-          git diff --cached --quiet || git commit -m "تحديث البيانات $(date -u +'%Y-%m-%d %H:%M')"
+          git add data.json index.html
+          git diff --cached --quiet || git commit -m "تحديث الموقع $(date -u +'%Y-%m-%d %H:%M')"
           git push
