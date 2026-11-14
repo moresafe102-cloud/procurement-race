@@ -381,7 +381,7 @@ const SNAPSHOT = {"updated": "2026-11-12 16:35", "basis": "quote-date", "buyers"
 let FILES = {"554015901.pdf|266326": "791c8277c74fd93d66cc89c35a3f9bc4", "540957719.pdf|175300": "7b26adef24162b8a2e3bd141bb232e53", "q0207-10-mor-2026-01.pdf|203528": "a314f3240621eb0c23d1102e2e962f1a", "508331241.pdf|104307": "705055c74f7a4e9ffa80254f43eff742", "507763911.pdf|80262": "365a39d53af16898b28b4b7f15bc2ffc", "546666250.pdf|254272": "0d3f3b799e28d1d2268d125cb5a7e52c", "568916066.pdf|618656": "14db09c6097b1b02cd6a7be4106f6d61", "557870389.pdf|129728": "602c44f0ad8ead793c738459a6116a66", "500699912.pdf|863304": "5b76ad74361bf71f15f71891e46e0e20", "542611029.pdf|286967": "6e126bf5a2f7532b9391f7b0cbbaccb9", "535261088.pdf|1897156": "5b41ed821fea569c6d8ee73593b3e523", "93t30kmbs -30 kva ups.pdf|46260": "d4fe0d9dd5ecb48c378e437e5f0b17d5", "fortress-الرياض.pdf|144257": "82b6ca3989d0f5fd89548d0ea9cfd640", "مجداف-الرياض.jpeg|101036": "c41a01e1a3fbd32c66ea9018890bdac6", "gmt-الرياض.pdf|125225": "c446eaa6aa308822831a6949548b1d21", "موسسة علي بحر-الخبر.pdf|97140": "03eda803e6f06cfb7cf4aae4eef19a8e", "مجداف - الرياض.pdf|42094": "ac9ccc5ab7441dc06929bdb9ed43d95f", "supply-الرياض.pdf|662028": "379592c37aac230ff6413169516bc174", "mindware-الرياض.jpeg|57648": "2d3543fca5c825dbed459d81568fef34", "whatsapp image 2026-10-24 at 3.22.13 pm.jpeg|17898": "ea8d178ec3d64d1a433641032add52e2"};
 const TEAM = ["#e10600","#ffc400","#2fa8ff","#2bd17e","#c56cf0","#ff8a3d","#7c8a99","#ff4fa3","#35d0c4","#9aa0ff"];
 let ATT = {}, ATTDB = null, SHEETATT = {};
-const ATT_URL = "https://script.google.com/macros/s/AKfycbwO_ahtYWfGndUQFitvLGFzBGufbBAA8ouEdhQZOE8fvMtZIwR8BILaaJlCYHR2h1FS/exec";
+const ATT_URL = "https://script.google.com/macros/s/AKfycbzHkRYcfxSpc4tWMLdicohwDfc3pYByq1iPRFYPVsADIIQ1xC1kta5v7TJmByQj8TMc/exec";
 function attNorm(v){ return typeof v==="string" ? {s:v,t:""} : (v&&typeof v==="object" ? {s:v.s||"",t:v.t||""} : null); }
 function attMerged(){ const out={}; [ (DATA&&DATA.att)||{}, SHEETATT, ATT ].forEach(src=>{ Object.keys(src).forEach(k=>{ const v=attNorm(src[k]); if(!v) return; const o=out[k]; if(!o || v.t>=o.t) out[k]=v; }); }); return out; }
 function attAll(){ const m=attMerged(), r={}; Object.keys(m).forEach(k=>{ if(m[k].s) r[k]=m[k].s; }); return r; }
@@ -699,20 +699,27 @@ async function saveAtt(k,v){
   try{ await ATTDB.doc("attendance/marks").set({marks:next, updated:new Date().toISOString()}); toast(v==="absent"?"اتسجل غياب":(v==="present"?"اتسجل حضور بدون عروض":"اتمسح التسجيل")); }
   catch(err){ ATT=prev; render(); toast("ماقدرتش أسجّل — التسجيل لصاحبة المنصة بس."); }
 }
+var JSONP_N=0;
+function jsonp(params){ return new Promise(function(res,rej){ var cb="__att"+(++JSONP_N)+"_"+Date.now(), sc=document.createElement("script"), done=false;
+  var q=Object.keys(params).map(function(k){return encodeURIComponent(k)+"="+encodeURIComponent(params[k]);}).join("&");
+  window[cb]=function(d){ done=true; cleanup(); res(d); };
+  function cleanup(){ try{delete window[cb];}catch(e){window[cb]=undefined;} sc.remove(); clearTimeout(tm); }
+  var tm=setTimeout(function(){ if(!done){ cleanup(); rej(new Error("timeout")); } },20000);
+  sc.onerror=function(){ if(!done){ cleanup(); rej(new Error("load")); } };
+  sc.src=ATT_URL+"?"+q+(q?"&":"")+"callback="+cb+"&t="+Date.now(); document.head.appendChild(sc); }); }
 async function savePublic(k,v){
   if(!ATT_URL){ toast("حفظ الغياب من اللينك ده لسه بيتجهّز."); return; }
   var pin=""; try{ pin=localStorage.getItem("race-pin")||""; }catch(e){}
   if(!pin){ pin=(window.prompt("اكتبي الرقم السري لتسجيل الغياب والحضور:")||"").trim(); if(!pin) return; }
   var prev=SHEETATT; SHEETATT=Object.assign({},SHEETATT); SHEETATT[k]={s:v||"",t:new Date().toISOString()}; render();
   try{
-    var r=await fetch(ATT_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({pin:pin,key:k,s:v||""})});
-    var j=await r.json();
-    if(!j.ok){ SHEETATT=prev; render(); if(j.err==="pin"){ try{localStorage.removeItem("race-pin")}catch(e){} toast("الرقم السري غلط."); } else toast("ماقدرتش أسجّل، جرّبي تاني."); return; }
+    var j=await jsonp({action:"set",pin:pin,key:k,s:v||""});
+    if(!j||!j.ok){ SHEETATT=prev; render(); if(j&&j.err==="pin"){ try{localStorage.removeItem("race-pin")}catch(e){} toast("الرقم السري غلط."); } else toast("ماقدرتش أسجّل، جرّبي تاني."); return; }
     try{ localStorage.setItem("race-pin",pin); }catch(e){}
     SHEETATT=j.marks||SHEETATT; render(); toast(v==="absent"?"اتسجل غياب":(v==="present"?"اتسجل حضور بدون عروض":"اتمسح التسجيل"));
   }catch(err){ SHEETATT=prev; render(); toast("ماقدرتش أوصل للشيت، اتأكدي من النت وجرّبي تاني."); }
 }
-async function loadSheetAtt(){ if(!ATT_URL) return; try{ var r=await fetch(ATT_URL+"?t="+Date.now()); var j=await r.json(); if(j&&j.ok&&j.marks){ SHEETATT=j.marks; render(); } }catch(e){} }
+async function loadSheetAtt(){ if(!ATT_URL) return; try{ var j=await jsonp({}); if(j&&j.ok&&j.marks){ SHEETATT=j.marks; render(); } }catch(e){} }
 if(ATT_URL){ loadSheetAtt(); setInterval(loadSheetAtt, 120000); }
 (async function(){ try{ if(typeof claude==="undefined"||!claude.use) return; var db=await claude.use("db"); if(!db) return; ATTDB=db;
   db.doc("attendance/marks").onSnapshot(function(snap){ var d=snap&&snap.exists?snap.data():null; ATT=(d&&d.marks)||{}; render(); },function(){}); }catch(e){} })();
@@ -905,3 +912,4 @@ setTimeout(tick,EVERY);
 })();</script>
 </body>
 </html>
+
