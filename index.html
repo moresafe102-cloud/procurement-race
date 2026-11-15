@@ -123,7 +123,13 @@ h1 span{color:var(--racing)}
 .s-fix{background:rgba(255,59,48,.16);color:var(--crit)}
 
 /* chart */
-.chart-wrap{overflow-x:auto}
+.chart-wrap{overflow-x:auto;position:relative}
+.ch-tip{position:absolute;pointer-events:none;z-index:5;background:var(--carbon);color:var(--chalk);border:1px solid var(--kerb);border-radius:10px;padding:7px 10px;font-size:12.5px;line-height:1.5;box-shadow:0 6px 18px rgba(0,0,0,.35);white-space:nowrap;display:none}
+.ch-tip b{font-family:var(--digits);font-size:15px}
+.ch-tip i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-inline-end:6px;vertical-align:middle}
+.ch-hit{cursor:pointer}
+.rank-sw{display:inline-flex;gap:6px;margin-inline-start:auto}
+.rank-sw button[aria-pressed="true"]{background:var(--racing);color:#fff;border-color:var(--racing)}
 svg text{fill:var(--smoke);font-family:var(--digits);font-size:11px}
 .legend{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--smoke)}
 .legend i{display:inline-block;width:14px;height:4px;border-radius:2px;background:var(--team);margin-inline-end:6px;vertical-align:middle}
@@ -307,6 +313,7 @@ document.documentElement.setAttribute("data-theme",t)})();</script>
       <button type="button" id="p-today" data-p="today">اليوم</button>
       <button type="button" id="p-week" data-p="week">آخر 7 أيام</button>
       <button type="button" id="p-month" data-p="month">هذا الشهر</button>
+      <button type="button" id="p-year" data-p="year">هذه السنة</button>
       <button type="button" id="p-all" data-p="all">كل الفترة</button>
       <button type="button" id="p-range" data-p="range">من تاريخ لتاريخ</button>
     </div>
@@ -329,7 +336,7 @@ document.documentElement.setAttribute("data-theme",t)})();</script>
 
   <section class="main">
     <div class="panel" aria-labelledby="towerH">
-      <div class="sec-h"><span class="tag">TIMING</span><h2 id="towerH">ترتيب السباق</h2></div>
+      <div class="sec-h"><span class="tag">TIMING</span><h2 id="towerH">ترتيب السباق</h2><span class="rank-sw"><button type="button" class="xbtn" data-setp="month">ترتيب الشهر</button><button type="button" class="xbtn" data-setp="year">ترتيب السنة</button></span></div>
       <div class="tower" id="tower"></div>
       <div class="note">الفرق = عدد العروض الناقصة عن صاحب المركز الأول. «اليوم» = عروض بتاريخ النهارده.</div>
     </div>
@@ -425,16 +432,46 @@ function periodRange(today){
   if (PERIOD==="today") return [today,today,"عروض بتاريخ "+fmtDay(today)];
   if (PERIOD==="week")  return [addDays(today,-6),today,"من "+fmtDay(addDays(today,-6))+" لحد "+fmtDay(today)];
   if (PERIOD==="month") return [today.slice(0,8)+"01",today,"من أول الشهر لحد "+fmtDay(today)];
+  if (PERIOD==="year")  return [today.slice(0,5)+"01-01",today,"من أول سنة "+today.slice(0,4)+" لحد "+fmtDay(today)];
   if (PERIOD==="range") { const f = RFROM || "0000-00-00", t = RTO || today; return [f, t, "من "+(RFROM?fmtDay(RFROM)+"/"+RFROM.slice(0,4):"البداية")+" لحد "+(RTO?fmtDay(RTO)+"/"+RTO.slice(0,4):fmtDay(today))]; }
   return ["0000-00-00","9999-99-99","كل العروض من البداية"];
 }
 
-document.addEventListener("click",function(e){ if(e.target && e.target.id==="dailyAll"){ window.DAILY_ALL = (window.DAILY_ALL===false); render(); } });
+document.addEventListener("click",function(e){ const sp=e.target && e.target.closest && e.target.closest("[data-setp]"); if(sp){ PERIOD=sp.dataset.setp; try{localStorage.setItem("race-period",PERIOD)}catch(_){} render(); return; } if(e.target && e.target.id==="dailyAll"){ window.DAILY_ALL = (window.DAILY_ALL===false); render(); } });
+(function(){
+  function hide(){ const t=document.getElementById("chTip"); if(t) t.style.display="none"; const gd=document.getElementById("chGuide"), dt=document.getElementById("chDot"); if(gd) gd.style.display="none"; if(dt) dt.style.display="none"; document.querySelectorAll("#chart .ch-line").forEach(l=>l.style.opacity=""); }
+  function show(ev){
+    const C=window.__CH, wrap=document.getElementById("chart"); if(!C||!wrap) return;
+    const svg=wrap.querySelector("svg"); if(!svg) return;
+    const pt=svg.createSVGPoint(); pt.x=ev.clientX; pt.y=ev.clientY; const p=pt.matrixTransform(svg.getScreenCTM().inverse());
+    if(p.x<C.pl-6||p.x>C.W-C.pr+6||p.y<C.pt-6||p.y>C.H-C.pb+6){ hide(); return; }
+    const n=C.days.length-1; let i=Math.round((C.W-C.pr-p.x)*n/(C.W-C.pl-C.pr)); i=Math.max(0,Math.min(n,i));
+    const yOf=v=>C.pt+(C.H-C.pt-C.pb)*(1-v/C.top);
+    let bi=-1, best=1e9; C.cum.forEach((c,k)=>{ const d=Math.abs(yOf(c[i])-p.y); if(d<best){ best=d; bi=k; } });
+    if(bi<0||best>18){ hide(); return; }
+    const x=C.W-C.pr-(i*(C.W-C.pl-C.pr)/n), v=C.cum[bi][i], y=yOf(v);
+    const gd=document.getElementById("chGuide"), dt=document.getElementById("chDot");
+    if(gd){ gd.setAttribute("x1",x); gd.setAttribute("x2",x); gd.style.display=""; }
+    if(dt){ dt.setAttribute("cx",x); dt.setAttribute("cy",y); dt.setAttribute("fill",C.colors[bi]); dt.style.display=""; }
+    document.querySelectorAll("#chart .ch-line").forEach(l=>l.style.opacity = (+l.dataset.bi===bi) ? "1" : ".18");
+    const dayN = i>0 ? v - C.cum[bi][i-1] : v;
+    const t=document.getElementById("chTip"); if(!t) return;
+    t.innerHTML=`<div><i style="background:${C.colors[bi]}"></i><strong>${esc(C.names[bi])}</strong></div><div><b>${num(v)}</b> عرض لحد ${fmtDay(C.days[i])}</div><div style="color:var(--smoke)">في اليوم ده: ${num(dayN)}</div>`;
+    t.style.display="block";
+    const r=wrap.getBoundingClientRect(); let lx=ev.clientX-r.left+wrap.scrollLeft+14, ly=ev.clientY-r.top-t.offsetHeight-12; if(ly<0) ly=ev.clientY-r.top+14; if(ly+t.offsetHeight>wrap.clientHeight) ly=Math.max(0,wrap.clientHeight-t.offsetHeight-2);
+    if(lx+t.offsetWidth>wrap.scrollWidth) lx=ev.clientX-r.left+wrap.scrollLeft-t.offsetWidth-14;
+    t.style.left=lx+"px"; t.style.top=ly+"px";
+  }
+  document.addEventListener("pointermove",function(e){ const w=document.getElementById("chart"); if(w && w.contains(e.target)) show(e); else hide(); });
+  document.addEventListener("pointerdown",function(e){ const w=document.getElementById("chart"); if(w && w.contains(e.target)) show(e); });
+})();
 function render(){
   const data = DATA;
   const today = (data.updated||"").slice(0,10) || data.q.reduce((m,r)=>r[1]>m?r[1]:m,"");
   const [from,to,label] = periodRange(today);
   document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.p===PERIOD));
+  document.querySelectorAll("[data-setp]").forEach(b=>b.setAttribute("aria-pressed", b.dataset.setp===PERIOD));
+  { const th=document.getElementById("towerH"); if(th) th.textContent = PERIOD==="year" ? "ترتيب السباق — السنة" : PERIOD==="month" ? "ترتيب السباق — الشهر" : "ترتيب السباق"; }
   { const rp=document.getElementById("rangePick"), rf=document.getElementById("rFrom"), rt=document.getElementById("rTo"); if(rp){ rp.classList.toggle("on", PERIOD==="range"); const first=data.q.reduce((m,r)=>r[1]&&r[1]<m?r[1]:m,"9999"); [rf,rt].forEach(x=>{ x.min=first; x.max=today; }); if(rf.value!==RFROM) rf.value=RFROM; if(rt.value!==RTO) rt.value=RTO; } }
   document.getElementById("periodNote").textContent = label;
   document.getElementById("repSub").textContent = "على الفترة المختارة: " + label;
@@ -498,17 +535,21 @@ function render(){
     for(let k=0;k<=4;k++){const v=top*k/4,y=ys(v); g+=`<line x1="${pl}" x2="${W-pr}" y1="${y}" y2="${y}" style="stroke:var(--kerb)"/><text x="${W-pr+8}" y="${y+4}">${num(Math.round(v))}</text>`;}
     const every=Math.ceil(days.length/8);
     days.forEach((d,i)=>{ if(i%every===0||i===days.length-1) g+=`<text x="${xs(i)}" y="${H-10}" text-anchor="middle">${fmtDay(d)}</text>`; });
-    B.forEach((b,bi)=>{ g+=`<polyline points="${cum[bi].map((v,i)=>`${xs(i)},${ys(v)}`).join(" ")}" fill="none" stroke="${b.color}" stroke-width="${bi<3?3:2}" stroke-linejoin="round" opacity="${bi<3?1:.7}"/>`;
+    window.__CH = {days, cum, names:B.map(b=>b.name), colors:B.map(b=>b.color), W, pl, pr, top, pt, pb, H};
+    B.forEach((b,bi)=>{ g+=`<polyline class="ch-line" data-bi="${bi}" points="${cum[bi].map((v,i)=>`${xs(i)},${ys(v)}`).join(" ")}" fill="none" stroke="${b.color}" stroke-width="${bi<3?3:2}" stroke-linejoin="round" opacity="${bi<3?1:.7}"/>`;
       const L=days.length-1; g+=`<circle cx="${xs(L)}" cy="${ys(cum[bi][L])}" r="${bi<3?5:3.5}" fill="${b.color}" style="stroke:var(--asphalt)" stroke-width="2"/>`;
       if(bi<3&&b.total) g+=`<text x="${xs(L)-8}" y="${ys(cum[bi][L])+4}" text-anchor="end" style="fill:${b.color};font-weight:700">P${bi+1}</text>`; });
-    document.getElementById("chartNote").textContent="إجمالي العروض المتراكم لكل موظف مع كل يوم في الفترة.";
+    B.forEach((b,bi)=>{ g+=`<polyline class="ch-hit" data-bi="${bi}" points="${cum[bi].map((v,i)=>`${xs(i)},${ys(v)}`).join(" ")}" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke"/>`; });
+    g+=`<line id="chGuide" x1="0" x2="0" y1="${pt}" y2="${H-pb}" style="stroke:var(--smoke);stroke-dasharray:3 3;display:none"/><circle id="chDot" r="5" style="display:none;stroke:var(--asphalt)" stroke-width="2"/>`;
+    document.getElementById("chartNote").textContent="إجمالي العروض المتراكم لكل موظف مع كل يوم في الفترة · وقفي على أي خط تشوفي اسمه ورقمه.";
   } else {
     const maxV=Math.max(1,...B.map(b=>b.total)); const bw=(W-pl-pr)/B.length;
     for(let k=0;k<=4;k++){const v=maxV*k/4,y=pt+(H-pt-pb)*(1-k/4); g+=`<line x1="${pl}" x2="${W-pr}" y1="${y}" y2="${y}" style="stroke:var(--kerb)"/><text x="${W-pr+8}" y="${y+4}">${Math.round(v)}</text>`;}
     B.forEach((b,i)=>{const x=W-pr-(i+1)*bw+bw*.18, h=(H-pt-pb)*b.total/maxV; g+=`<rect x="${x}" y="${H-pb-h}" width="${bw*.64}" height="${h}" rx="4" fill="${b.color}"/><text x="${x+bw*.32}" y="${H-10}" text-anchor="middle">${b.total}</text>`;});
+    window.__CH = null;
     document.getElementById("chartNote").textContent="عدد عروض كل موظف في اليوم المختار.";
   }
-  document.getElementById("chart").innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:420px" role="img" aria-label="سباق عروض الأسعار">${g}</svg>`;
+  document.getElementById("chart").innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:420px" role="img" aria-label="سباق عروض الأسعار">${g}</svg><div class="ch-tip" id="chTip"></div>`;
   document.getElementById("legend").innerHTML=B.map(b=>`<span style="--team:${b.color}"><i></i>${esc(b.name)}</span>`).join("");
 
   /* daily table: last 14 days of the period, newest first on the right */
