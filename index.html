@@ -137,7 +137,13 @@ svg text{fill:var(--smoke);font-family:var(--digits);font-size:11px}
 .spark{display:block}
 .dotd{display:inline-block;width:8px;height:8px;border-radius:2px;margin-inline-end:8px;vertical-align:middle}
 /* daily table */
-.daily{overflow-x:auto}
+.daily{overflow-x:auto;max-width:100%}
+.range-pick{display:none;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--smoke)}
+.range-pick.on{display:inline-flex}
+.range-pick label{display:inline-flex;align-items:center;gap:6px}
+.range-pick input{font:inherit;color:var(--chalk);background:var(--panel2,var(--panel));border:1px solid var(--kerb);border-radius:8px;padding:5px 8px;color-scheme:light dark}
+.daily td:first-child,.daily th:first-child{position:sticky;right:0;background:var(--panel);z-index:1}
+.daily tfoot td:first-child{background:var(--panel)}
 table{border-collapse:collapse;width:100%;font-size:13.5px}
 th,td{padding:8px 10px;text-align:center;border-bottom:1px solid var(--kerb);white-space:nowrap}
 th{color:var(--smoke);font-weight:600;font-size:12px}
@@ -303,7 +309,9 @@ document.documentElement.setAttribute("data-theme",t)})();</script>
       <button type="button" id="p-week" data-p="week">آخر 7 أيام</button>
       <button type="button" id="p-month" data-p="month">هذا الشهر</button>
       <button type="button" id="p-all" data-p="all">كل الفترة</button>
+      <button type="button" id="p-range" data-p="range">من تاريخ لتاريخ</button>
     </div>
+    <span class="range-pick" id="rangePick"><label>من <input type="date" id="rFrom"></label><label>إلى <input type="date" id="rTo"></label></span>
     <span class="period-note" id="periodNote"></span>
     <span class="xgroup"><a class="xbtn" href="https://drive.google.com/drive/folders/1ehJjuCAA9a8x5wcG1OrXTYc3k554-JYZ" target="_blank" rel="noopener">كل الملفات على Drive</a><a class="xbtn" href="https://docs.google.com/spreadsheets/d/1aebNk3DJEpfGbsQKsfX4eN5RoiexWCoh" target="_blank" rel="noopener">ملف المنصة (Excel)</a></span>
   </div>
@@ -335,7 +343,7 @@ document.documentElement.setAttribute("data-theme",t)})();</script>
   </section>
 
   <section class="panel" aria-labelledby="dailyH">
-    <div class="sec-h"><span class="tag">LAPS</span><h2 id="dailyH">العروض حسب التاريخ المكتوب في العرض</h2><p>آخر 14 يوم في الفترة · دوسي على أي رقم تشوفي ملفاته</p>
+    <div class="sec-h"><span class="tag">LAPS</span><h2 id="dailyH">العروض حسب التاريخ المكتوب في العرض</h2><p id="dailySub">كل أيام الفترة · اسحبي الجدول يمين وشمال علشان تشوفي الأيام القديمة · دوسي على أي رقم تشوفي ملفاته</p> <button type="button" class="xbtn" id="dailyAll">اعرض آخر 14 يوم بس</button>
       <span class="xgroup"><span class="lbl">تصدير Excel:</span>
         <button type="button" class="xbtn" data-x="today">يوم</button>
         <button type="button" class="xbtn" data-x="week">أسبوع</button>
@@ -397,21 +405,25 @@ const fmtDay = d => { const [y,m,dd] = d.split("-"); return `${+dd}/${+m}`; };
 const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const num = n => Number(n).toLocaleString("en-US");
 const addDays = (iso,k) => { const d=new Date(iso+"T00:00:00Z"); d.setUTCDate(d.getUTCDate()+k); return d.toISOString().slice(0,10); };
-let DATA = SNAPSHOT, PERIOD = "month";
+let DATA = SNAPSHOT, PERIOD = "month", RFROM = "", RTO = "";
+try { RFROM = localStorage.getItem("race-rfrom")||""; RTO = localStorage.getItem("race-rto")||""; } catch(e){}
 try { const s = localStorage.getItem("race-period"); if (s) PERIOD = s; } catch(e){}
 
 function periodRange(today){
   if (PERIOD==="today") return [today,today,"عروض بتاريخ "+fmtDay(today)];
   if (PERIOD==="week")  return [addDays(today,-6),today,"من "+fmtDay(addDays(today,-6))+" لحد "+fmtDay(today)];
   if (PERIOD==="month") return [today.slice(0,8)+"01",today,"من أول الشهر لحد "+fmtDay(today)];
+  if (PERIOD==="range") { const f = RFROM || "0000-00-00", t = RTO || today; return [f, t, "من "+(RFROM?fmtDay(RFROM)+"/"+RFROM.slice(0,4):"البداية")+" لحد "+(RTO?fmtDay(RTO)+"/"+RTO.slice(0,4):fmtDay(today))]; }
   return ["0000-00-00","9999-99-99","كل العروض من البداية"];
 }
 
+document.addEventListener("click",function(e){ if(e.target && e.target.id==="dailyAll"){ window.DAILY_ALL = (window.DAILY_ALL===false); render(); } });
 function render(){
   const data = DATA;
   const today = (data.updated||"").slice(0,10) || data.q.reduce((m,r)=>r[1]>m?r[1]:m,"");
   const [from,to,label] = periodRange(today);
   document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.p===PERIOD));
+  { const rp=document.getElementById("rangePick"), rf=document.getElementById("rFrom"), rt=document.getElementById("rTo"); if(rp){ rp.classList.toggle("on", PERIOD==="range"); const first=data.q.reduce((m,r)=>r[1]&&r[1]<m?r[1]:m,"9999"); [rf,rt].forEach(x=>{ x.min=first; x.max=today; }); if(rf.value!==RFROM) rf.value=RFROM; if(rt.value!==RTO) rt.value=RTO; } }
   document.getElementById("periodNote").textContent = label;
   document.getElementById("repSub").textContent = "على الفترة المختارة: " + label;
   const Q = data.q.filter(r=>r[1] && r[1]>=from && r[1]<=to);
@@ -488,13 +500,20 @@ function render(){
   document.getElementById("legend").innerHTML=B.map(b=>`<span style="--team:${b.color}"><i></i>${esc(b.name)}</span>`).join("");
 
   /* daily table: last 14 days of the period, newest first on the right */
-  const show = days.slice(-14);
+  const show = (window.DAILY_ALL!==false) ? days.slice() : days.slice(-14);
+  { const bt=document.getElementById("dailyAll"), sb=document.getElementById("dailySub"); if(bt){ bt.textContent = (window.DAILY_ALL!==false) ? "اعرض آخر 14 يوم بس" : "اعرض كل الأيام"; } if(sb){ sb.textContent = (window.DAILY_ALL!==false) ? "كل أيام الفترة ("+days.length+" يوم) · اسحبي الجدول علشان تشوفي الأيام القديمة · دوسي على أي رقم تشوفي ملفاته" : "آخر 14 يوم · عمود «قبل» فيه العروض الأقدم · الأيام + «قبل» = الإجمالي"; } }
   const idx = show.map(d=>days.indexOf(d));
   const dayMax = idx.map(i=>Math.max(...B.map(b=>b.daily[i])));
-  document.getElementById("daily").innerHTML = show.length ? `<table><thead><tr><th>الموظف</th>${show.slice().reverse().map(d=>`<th class="num">${fmtDay(d)}</th>`).join("")}<th>الفترة</th><th>طلبات</th></tr></thead>
+  const hasOlder = days.length > show.length;
+  const olderTo = hasOlder ? days[days.length-show.length-1] : "";
+  const olderOf = b => b.total - idx.reduce((s,i)=>s+b.daily[i],0);
+  const olderHead = hasOlder ? `<th class="num" title="كل العروض اللي تاريخها قبل ${fmtDay(show[0])}">قبل ${fmtDay(show[0])}</th>` : "";
+  const olderCell = b => { if(!hasOlder) return ""; const x=olderOf(b); return x ? `<td class="num click" data-b="${b.bi}" data-from="${from}" data-to="${olderTo}" role="button" tabindex="0" title="اعرض الملفات">${x}</td>` : `<td class="num z">0</td>`; };
+  const olderFoot = hasOlder ? `<td class="num">${num(B.reduce((s,b)=>s+olderOf(b),0))}</td>` : "";
+  document.getElementById("daily").innerHTML = show.length ? `<table><thead><tr><th>الموظف</th>${show.slice().reverse().map(d=>`<th class="num">${fmtDay(d)}</th>`).join("")}${olderHead}<th>الإجمالي</th><th>طلبات</th></tr></thead>
     <tbody>${B.map(b=>`<tr><td><span class="dotd" style="background:${b.color}"></span>${esc(b.name)}</td>${
-      idx.slice().reverse().map((i,k)=>{const x=b.daily[i], mx=dayMax[idx.length-1-k], d=days[i]; return x? `<td class="num click ${x===mx?"hi":""}" data-b="${b.bi}" data-from="${d}" data-to="${d}" role="button" tabindex="0" title="اعرض الملفات">${x}</td>` : attCell(b.name,d);}).join("")}<td class="num ${b.total?"click":""}" ${b.total?`data-b="${b.bi}" data-from="${from}" data-to="${to}" role="button" tabindex="0"`:""}><b>${num(b.total)}</b></td><td class="num">${b.reqs}</td></tr>`).join("")}</tbody>
-    <tfoot><tr><td>الإجمالي</td>${idx.slice().reverse().map(i=>`<td class="num">${num(B.reduce((a,b)=>a+b.daily[i],0))}</td>`).join("")}<td class="num">${num(teamTotal)}</td><td class="num">${teamReqs}</td></tr></tfoot></table>` : `<p class="empty">مفيش عروض في الفترة دي.</p>`;
+      idx.slice().reverse().map((i,k)=>{const x=b.daily[i], mx=dayMax[idx.length-1-k], d=days[i]; return x? `<td class="num click ${x===mx?"hi":""}" data-b="${b.bi}" data-from="${d}" data-to="${d}" role="button" tabindex="0" title="اعرض الملفات">${x}</td>` : attCell(b.name,d);}).join("")}${olderCell(b)}<td class="num ${b.total?"click":""}" ${b.total?`data-b="${b.bi}" data-from="${from}" data-to="${to}" role="button" tabindex="0"`:""}><b>${num(b.total)}</b></td><td class="num">${b.reqs}</td></tr>`).join("")}</tbody>
+    <tfoot><tr><td>الإجمالي</td>${idx.slice().reverse().map(i=>`<td class="num">${num(B.reduce((a,b)=>a+b.daily[i],0))}</td>`).join("")}${olderFoot}<td class="num">${num(teamTotal)}</td><td class="num">${teamReqs}</td></tr></tfoot></table>` : `<p class="empty">مفيش عروض في الفترة دي.</p>`;
 
   /* pit lane */
   const pit = PERIOD==="today" ? [] : B.filter(b=>["fix","imp","none"].includes(b.status));
@@ -515,6 +534,7 @@ function render(){
       <ul>${items.map(t=>`<li>${t}</li>`).join("")}</ul></article>`;}).join("") : `<p class="empty">مفيش حد محتاج خطة في الفترة دي — الكل فوق متوسط الفريق.</p>`);
 }
 
+["rFrom","rTo"].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener("change",()=>{ RFROM=document.getElementById("rFrom").value; RTO=document.getElementById("rTo").value; if(RFROM&&RTO&&RFROM>RTO){ const t=RFROM; RFROM=RTO; RTO=t; } PERIOD="range"; try{localStorage.setItem("race-rfrom",RFROM);localStorage.setItem("race-rto",RTO);localStorage.setItem("race-period",PERIOD)}catch(e){} render(); }); });
 document.querySelectorAll(".tabs button").forEach(btn=>btn.addEventListener("click",()=>{
   PERIOD=btn.dataset.p; try{localStorage.setItem("race-period",PERIOD)}catch(e){} render();
 }));
