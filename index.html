@@ -342,7 +342,7 @@ document.documentElement.setAttribute("data-theme",t)})();</script>
         <button type="button" class="xbtn" data-x="month">شهر</button>
         <button type="button" class="xbtn" data-x="all">الفترة كلها</button></span></div>
     <div class="daily" id="daily"></div>
-    <div class="att-legend"><span><span class="att-a">غ</span> غياب</span><span><span class="att-p"><i></i>0</span> حضر ومجبش عروض</span><span>اضغطي على أي صفر علشان تسجّلي غياب أو حضور</span></div>
+    <div class="att-legend"><span><span class="att-a">غ</span> غياب</span><span><span class="att-p"><i></i>0</span> حضور وما جابش عروض اسعار</span><span>اضغطي على أي صفر علشان تسجّلي غياب أو حضور</span></div>
   </section>
 
   <section class="panel" aria-labelledby="repH">
@@ -390,7 +390,7 @@ function absentIn(name,days){ const a=attAll(); return days.filter(d=>a[d+"|"+na
 function presentZeroIn(name,days,per){ const a=attAll(); return days.filter(d=>!per[d] && a[d+"|"+name]==="present").length; }
 function attCell(name,d){ const v=attOf(name,d);
   const inner = v==="absent" ? '<span class="att-a">غ</span>' : (v==="present" ? '<span class="att-p"><i></i>0</span>' : '0');
-  const tip = v==="absent" ? "غياب — اضغطي للتعديل" : (v==="present" ? "حضر ومجبش عروض — اضغطي للتعديل" : "سجّلي غياب أو حضور");
+  const tip = v==="absent" ? "غياب — اضغطي للتعديل" : (v==="present" ? "حضور وما جابش عروض اسعار — اضغطي للتعديل" : "سجّلي غياب أو حضور");
   return `<td class="num z att" data-an="${esc(name)}" data-ad="${d}" role="button" tabindex="0" title="${tip}">${inner}</td>`; }
 function attXls(b,d){ if(b.per[d]) return b.per[d]; const v=attOf(b.name,d); return v==="absent"?"غياب":0; }
 const fmtDay = d => { const [y,m,dd] = d.split("-"); return `${+dd}/${+m}`; };
@@ -602,7 +602,7 @@ function stats(P){
 const PNAME={today:"يوم",week:"أسبوع",month:"شهر",all:"الفترة كلها"};
 function sheet(rows, widths){ const ws=XLSX.utils.aoa_to_sheet(rows); if(widths) ws["!cols"]=widths.map(w=>({wch:w})); return ws; }
 function attRows(S){ const a=attAll(), rows=[["التاريخ","موظف المشتريات","الحالة"]];
-  Object.keys(a).filter(k=>{const d=k.split("|")[0]; return d>=S.from&&d<=S.to;}).sort().reverse().forEach(k=>{const [d,n]=k.split("|"); rows.push([d,n,a[k]==="absent"?"غياب":"حضر ومجبش عروض"]);});
+  Object.keys(a).filter(k=>{const d=k.split("|")[0]; return d>=S.from&&d<=S.to;}).sort().reverse().forEach(k=>{const [d,n]=k.split("|"); rows.push([d,n,a[k]==="absent"?"غياب":"حضور وما جابش عروض اسعار"]);});
   if(rows.length===1) rows.push(["","مفيش غياب أو حضور متسجّل في الفترة دي",""]); return rows; }
 function quoteRows(Q){ return [["تاريخ العرض","موظف المشتريات","طلب الاحتياج","المورد","اسم الملف","رابط الملف"],
   ...Q.slice().sort((a,b)=>a[1]<b[1]?1:-1).map(r=>[r[1],DATA.buyers[r[0]],DATA.requests[r[2]]||"",r[3]||"",r[4], urlOf(r)? new URL(urlOf(r),location.href).href : "لسه بيترفع"])]; }
@@ -612,7 +612,7 @@ async function exportPeriod(P){
   if(typeof XLSX==="undefined"){ toast("مكتبة Excel مش محمّلة، جرّبي تاني."); return; }
   const S=stats(P); const wb=newBook();
   XLSX.utils.book_append_sheet(wb, sheet([[`عروض الأسعار — ${PNAME[P]}: ${S.label}`],[`آخر تحديث: ${DATA.updated||""}`],[],
-    ["المركز","موظف المشتريات","عدد العروض","أيام فيها عروض","أيام غياب","حضر بدون عروض","متوسط/يوم","طلبات الاحتياج","الحالة"],
+    ["المركز","موظف المشتريات","عدد العروض","أيام فيها عروض","أيام غياب","حضور وما جابش عروض اسعار","متوسط/يوم","طلبات الاحتياج","الحالة"],
     ...S.B.map(b=>[b.pos,b.name,b.total,b.active,b.absent,b.presentZero,+b.avg.toFixed(1),b.reqs,b.status]),["","الإجمالي",S.teamTotal,"","","","",S.teamReqs,""]],[8,18,12,14,10,14,10,14,16]),"الترتيب");
   XLSX.utils.book_append_sheet(wb, sheet([["تاريخ العرض",...S.B.map(b=>b.name),"الإجمالي"],
     ...S.days.slice().reverse().map(d=>[d,...S.B.map(b=>attXls(b,d)),S.B.reduce((a,b)=>a+(b.per[d]||0),0)])],[12,...S.B.map(()=>14),10]),"حسب التاريخ");
@@ -625,7 +625,7 @@ document.getElementById("repAll").addEventListener("click", async ()=>{
   if(typeof XLSX==="undefined") return toast("مكتبة Excel مش محمّلة، جرّبي تاني.");
   const S=stats(PERIOD); const wb=newBook();
   XLSX.utils.book_append_sheet(wb, sheet([[`التقرير المجمّع — ${S.label}`],[`آخر تحديث: ${DATA.updated||""}`],[],
-    ["المركز","موظف المشتريات","عدد العروض","أيام فيها عروض","أيام غياب","حضر بدون عروض","متوسط/يوم","طلبات الاحتياج","عروض لكل طلب","الحالة","الخطة"],
+    ["المركز","موظف المشتريات","عدد العروض","أيام فيها عروض","أيام غياب","حضور وما جابش عروض اسعار","متوسط/يوم","طلبات الاحتياج","عروض لكل طلب","الحالة","الخطة"],
     ...S.B.map(b=>[b.pos,b.name,b.total,b.active,b.absent,b.presentZero,+b.avg.toFixed(1),b.reqs,+b.perReq.toFixed(1),b.status,b.plan]),
     [],["","متوسط الفريق",+S.teamAvg.toFixed(1)]],[8,18,12,14,10,14,12,16,70]),"ملخص الفريق");
   XLSX.utils.book_append_sheet(wb, sheet([["تاريخ العرض",...S.B.map(b=>b.name),"الإجمالي"],
@@ -669,7 +669,7 @@ paint()})();</script>
 <div class="att-pop" id="attPop" role="dialog" aria-label="تسجيل حضور أو غياب">
   <h4 id="attWho"></h4><div class="sub" id="attDay"></div>
   <button type="button" data-v="absent"><span class="att-a">غ</span> كان غايب</button>
-  <button type="button" data-v="present"><span class="att-p"><i></i>0</span> حضر ومجبش عروض سعر</button>
+  <button type="button" data-v="present"><span class="att-p"><i></i>0</span> حضور وما جابش عروض اسعار</button>
   <button type="button" class="clear" data-v="">مسح التسجيل</button>
 </div>
 <script>(function(){
@@ -696,7 +696,7 @@ async function saveAtt(k,v){
   if(!ATTDB){ return savePublic(k,v); }
   var next=Object.assign({},ATT); next[k]={s:v||"",t:new Date().toISOString()};
   var prev=ATT; ATT=next; render();
-  try{ await ATTDB.doc("attendance/marks").set({marks:next, updated:new Date().toISOString()}); toast(v==="absent"?"اتسجل غياب":(v==="present"?"اتسجل حضور بدون عروض":"اتمسح التسجيل")); }
+  try{ await ATTDB.doc("attendance/marks").set({marks:next, updated:new Date().toISOString()}); toast(v==="absent"?"اتسجل غياب":(v==="present"?"اتسجل حضور وما جابش عروض اسعار":"اتمسح التسجيل")); }
   catch(err){ ATT=prev; render(); toast("ماقدرتش أسجّل — التسجيل لصاحبة المنصة بس."); }
 }
 var JSONP_N=0;
@@ -716,7 +716,7 @@ async function savePublic(k,v){
     var j=await jsonp({action:"set",pin:pin,key:k,s:v||""});
     if(!j||!j.ok){ SHEETATT=prev; render(); if(j&&j.err==="pin"){ try{localStorage.removeItem("race-pin")}catch(e){} toast("الرقم السري غلط."); } else toast("ماقدرتش أسجّل، جرّبي تاني."); return; }
     try{ localStorage.setItem("race-pin",pin); }catch(e){}
-    SHEETATT=j.marks||SHEETATT; render(); toast(v==="absent"?"اتسجل غياب":(v==="present"?"اتسجل حضور بدون عروض":"اتمسح التسجيل"));
+    SHEETATT=j.marks||SHEETATT; render(); toast(v==="absent"?"اتسجل غياب":(v==="present"?"اتسجل حضور وما جابش عروض اسعار":"اتمسح التسجيل"));
   }catch(err){ SHEETATT=prev; render(); toast("ماقدرتش أوصل للشيت، اتأكدي من النت وجرّبي تاني."); }
 }
 async function loadSheetAtt(){ if(!ATT_URL) return; try{ var j=await jsonp({}); if(j&&j.ok&&j.marks){ SHEETATT=j.marks; render(); } }catch(e){} }
