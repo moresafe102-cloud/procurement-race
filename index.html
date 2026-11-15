@@ -142,8 +142,7 @@ svg text{fill:var(--smoke);font-family:var(--digits);font-size:11px}
 .range-pick.on{display:inline-flex}
 .range-pick label{display:inline-flex;align-items:center;gap:6px}
 .range-pick input{font:inherit;color:var(--chalk);background:var(--panel2,var(--panel));border:1px solid var(--kerb);border-radius:8px;padding:5px 8px;color-scheme:light dark}
-.daily td:first-child,.daily th:first-child{position:sticky;right:0;background:var(--panel);z-index:1}
-.daily tfoot td:first-child{background:var(--panel)}
+.daily td:first-child,.daily th:first-child{position:sticky;right:0;background:var(--carbon);z-index:2;box-shadow:-6px 0 8px -6px rgba(0,0,0,.45)}
 table{border-collapse:collapse;width:100%;font-size:13.5px}
 th,td{padding:8px 10px;text-align:center;border-bottom:1px solid var(--kerb);white-space:nowrap}
 th{color:var(--smoke);font-weight:600;font-size:12px}
@@ -392,7 +391,7 @@ let ATT = {}, ATTDB = null, SHEETATT = {};
 const ATT_URL = "https://script.google.com/macros/s/AKfycbzHkRYcfxSpc4tWMLdicohwDfc3pYByq1iPRFYPVsADIIQ1xC1kta5v7TJmByQj8TMc/exec";
 function attNorm(v){ return typeof v==="string" ? {s:v,t:""} : (v&&typeof v==="object" ? {s:v.s||"",t:v.t||""} : null); }
 function attMerged(){ const out={}; [ (DATA&&DATA.att)||{}, SHEETATT, ATT ].forEach(src=>{ Object.keys(src).forEach(k=>{ const v=attNorm(src[k]); if(!v) return; const o=out[k]; if(!o || v.t>=o.t) out[k]=v; }); }); return out; }
-function attAll(){ const m=attMerged(), r={}; Object.keys(m).forEach(k=>{ if(m[k].s) r[k]=m[k].s; }); return r; }
+function attAll(){ const m=attMerged(), r={}; Object.keys(m).forEach(k=>{ if(m[k].s){ const p=k.indexOf("|"); const kk = p>0 ? k.slice(0,p)+"|"+canonName(k.slice(p+1)) : k; if(!r[kk] || kk===k) r[kk]=m[k].s; } }); return r; }
 function attOf(name,d){ return attAll()[d+"|"+name]||""; }
 function absentIn(name,days){ const a=attAll(); return days.filter(d=>a[d+"|"+name]==="absent").length; }
 function presentZeroIn(name,days,per){ const a=attAll(); return days.filter(d=>!per[d] && a[d+"|"+name]==="present").length; }
@@ -405,7 +404,20 @@ const fmtDay = d => { const [y,m,dd] = d.split("-"); return `${+dd}/${+m}`; };
 const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const num = n => Number(n).toLocaleString("en-US");
 const addDays = (iso,k) => { const d=new Date(iso+"T00:00:00Z"); d.setUTCDate(d.getUTCDate()+k); return d.toISOString().slice(0,10); };
-let DATA = SNAPSHOT, PERIOD = "month", RFROM = "", RTO = "";
+const ALIAS = {"مصطفي نينجا":"مصطفي احمد امين","نور":"نور احمد علي","محمد 428":"محمد احمد صبره","محمد مصلحي":"محمد خالد مصلحي","يوسف 258":"يوسف وليد محمود","يوسف محمد محمود":"يوسف وليد محمود","بيشوي 008":"بيشوي","ابو رحيم":"يوسف محمد","ابو ريما":"يوسف محمد","abo rema":"يوسف محمد","يوسف محمد محمد":"يوسف محمد","ابو جبل":"انجي احمد محمود"};
+const BUYER_ORDER = ["مصطفي احمد امين","نور احمد علي","محمد احمد صبره","محمد خالد مصلحي","بيشوي","يوسف وليد محمود","يوسف محمد","انجي احمد محمود"];
+const canonName = n => { const k = String(n||"").replace(/ى/g,"ي").replace(/\s+/g," ").trim(); return ALIAS[k] || k; };
+function normData(d){
+  try{
+    if(!d || !Array.isArray(d.buyers) || !Array.isArray(d.q)) return d;
+    const names = d.buyers.map(canonName);
+    const uniq = [...new Set(names)].sort((a,b)=>{ const ia=BUYER_ORDER.indexOf(a), ib=BUYER_ORDER.indexOf(b); return (ia<0?99:ia)-(ib<0?99:ib); });
+    const map = names.map(n=>uniq.indexOf(n));
+    const q = d.q.map(r=>{ const x=r.slice(); x[0]=map[r[0]]; return x; });
+    return Object.assign({}, d, {buyers:uniq, q});
+  }catch(e){ return d; }
+}
+let DATA = normData(SNAPSHOT), PERIOD = "month", RFROM = "", RTO = "";
 try { RFROM = localStorage.getItem("race-rfrom")||""; RTO = localStorage.getItem("race-rto")||""; } catch(e){}
 try { const s = localStorage.getItem("race-period"); if (s) PERIOD = s; } catch(e){}
 
@@ -675,7 +687,7 @@ render();
     const res = await fetch("data.json?t=" + Date.now(), {cache:"no-store"});
     if (!res.ok) return;
     const d = await res.json();
-    if (d && Array.isArray(d.buyers) && Array.isArray(d.q) && d.q.length) { DATA = d; render(); }
+    if (d && Array.isArray(d.buyers) && Array.isArray(d.q) && d.q.length) { DATA = normData(d); render(); }
   } catch (e) { /* keep the embedded snapshot */ }
 })();
 </script>
