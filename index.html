@@ -337,7 +337,7 @@ document.documentElement.setAttribute("data-theme",t)})();</script>
     </div>
     <span class="range-pick" id="rangePick"><label>من <input type="date" id="rFrom"></label><label>إلى <input type="date" id="rTo"></label></span>
     <span class="period-note" id="periodNote"></span>
-    <span class="xgroup"><a class="xbtn" href="https://drive.google.com/drive/folders/1ehJjuCAA9a8x5wcG1OrXTYc3k554-JYZ" target="_blank" rel="noopener">كل الملفات على Drive</a><a class="xbtn" href="https://docs.google.com/spreadsheets/d/1aebNk3DJEpfGbsQKsfX4eN5RoiexWCoh" target="_blank" rel="noopener">ملف المنصة (Excel)</a></span>
+    <span class="xgroup"><a class="xbtn" href="https://drive.google.com/drive/folders/1ehJjuCAA9a8x5wcG1OrXTYc3k554-JYZ" target="_blank" rel="noopener">كل الملفات على Drive</a><button type="button" class="xbtn" id="xlsNow" title="بيتعمل من آخر بيانات على المنصة للفترة المختارة">ملف المنصة (Excel)</button></span>
   </div>
 
   <section class="strip" aria-label="ملخص السباق">
@@ -729,7 +729,7 @@ function stats(P){
     b.plan=plan.join(" · ");});
   return {today,from,to,label,Q,days,B,teamTotal,teamAvg,teamReqs};
 }
-const PNAME={today:"يوم",week:"أسبوع",month:"شهر",all:"الفترة كلها"};
+const PNAME={today:"يوم",week:"أسبوع",month:"شهر",year:"سنة",range:"فترة مختارة",all:"الفترة كلها"};
 function sheet(rows, widths){ const ws=XLSX.utils.aoa_to_sheet(rows); if(widths) ws["!cols"]=widths.map(w=>({wch:w})); return ws; }
 function attRows(S){ const a=attAll(), rows=[["التاريخ","موظف المشتريات","الحالة"]];
   Object.keys(a).filter(k=>{const d=k.split("|")[0]; return d>=S.from&&d<=S.to;}).sort().reverse().forEach(k=>{const [d,n]=k.split("|"); rows.push([d,n,a[k]==="absent"?"غياب":"حضور وما جابش عروض اسعار"]);});
@@ -751,6 +751,7 @@ async function exportPeriod(P){
   await writeBook(wb, `عروض الأسعار - ${PNAME[P]} - ${S.today}.xlsx`);
 }
 document.querySelectorAll("[data-x]").forEach(b=>b.addEventListener("click",()=>exportPeriod(b.dataset.x)));
+{ const xb=document.getElementById("xlsNow"); if(xb) xb.addEventListener("click",()=>exportPeriod(PERIOD)); }
 document.getElementById("repAll").addEventListener("click", async ()=>{
   if(typeof XLSX==="undefined") return toast("مكتبة Excel مش محمّلة، جرّبي تاني.");
   const S=stats(PERIOD); const wb=newBook();
