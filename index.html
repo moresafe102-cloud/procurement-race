@@ -730,6 +730,14 @@ function stats(P){
   return {today,from,to,label,Q,days,B,teamTotal,teamAvg,teamReqs};
 }
 const PNAME={today:"يوم",week:"أسبوع",month:"شهر",year:"سنة",range:"فترة مختارة",all:"الفترة كلها"};
+function avgRankRows(S){
+  const act=S.B.reduce((a,b)=>a+b.active,0), dayAvg=act?S.teamTotal/act:0;
+  const R=S.B.slice().sort((a,b)=>b.avg-a.avg||b.total-a.total||b.active-a.active);
+  return [[],["المراكز على حسب متوسطه في اليوم"],
+    ["المركز","موظف المشتريات","متوسط العروض في اليوم","عدد العروض","أيام فيها عروض","نسبته من متوسط الفريق","مركزه في الترتيب العام"],
+    ...R.map((b,i)=>[i+1,b.name,+b.avg.toFixed(2),b.total,b.active,dayAvg?Math.round(b.avg/dayAvg*100)+"%":"",b.pos]),
+    ["","متوسط الفريق في اليوم",+dayAvg.toFixed(2)]];
+}
 function sheet(rows, widths){ const ws=XLSX.utils.aoa_to_sheet(rows); if(widths) ws["!cols"]=widths.map(w=>({wch:w})); return ws; }
 function attRows(S){ const a=attAll(), rows=[["التاريخ","موظف المشتريات","الحالة"]];
   Object.keys(a).filter(k=>{const d=k.split("|")[0]; return d>=S.from&&d<=S.to;}).sort().reverse().forEach(k=>{const [d,n]=k.split("|"); rows.push([d,n,a[k]==="absent"?"غياب":"حضور وما جابش عروض اسعار"]);});
@@ -743,7 +751,7 @@ async function exportPeriod(P){
   const S=stats(P); const wb=newBook();
   XLSX.utils.book_append_sheet(wb, sheet([[`عروض الأسعار — ${PNAME[P]}: ${S.label}`],[`آخر تحديث: ${DATA.updated||""}`],[],
     ["المركز","موظف المشتريات","عدد العروض","أيام فيها عروض","أيام غياب","حضور وما جابش عروض اسعار","متوسط/يوم","طلبات الاحتياج","الحالة"],
-    ...S.B.map(b=>[b.pos,b.name,b.total,b.active,b.absent,b.presentZero,+b.avg.toFixed(1),b.reqs,b.status]),["","الإجمالي",S.teamTotal,"","","","",S.teamReqs,""]],[8,18,12,14,10,14,10,14,16]),"الترتيب");
+    ...S.B.map(b=>[b.pos,b.name,b.total,b.active,b.absent,b.presentZero,+b.avg.toFixed(1),b.reqs,b.status]),["","الإجمالي",S.teamTotal,"","","","",S.teamReqs,""],...avgRankRows(S)],[8,22,14,14,14,18,16,14,16]),"الترتيب");
   XLSX.utils.book_append_sheet(wb, sheet([["تاريخ العرض",...S.B.map(b=>b.name),"الإجمالي"],
     ...S.days.slice().reverse().map(d=>[d,...S.B.map(b=>attXls(b,d)),S.B.reduce((a,b)=>a+(b.per[d]||0),0)])],[12,...S.B.map(()=>14),10]),"حسب التاريخ");
   XLSX.utils.book_append_sheet(wb, sheet(attRows(S),[12,18,22]),"الحضور والغياب");
@@ -758,7 +766,7 @@ document.getElementById("repAll").addEventListener("click", async ()=>{
   XLSX.utils.book_append_sheet(wb, sheet([[`التقرير المجمّع — ${S.label}`],[`آخر تحديث: ${DATA.updated||""}`],[],
     ["المركز","موظف المشتريات","عدد العروض","أيام فيها عروض","أيام غياب","حضور وما جابش عروض اسعار","متوسط/يوم","طلبات الاحتياج","عروض لكل طلب","الحالة","الخطة"],
     ...S.B.map(b=>[b.pos,b.name,b.total,b.active,b.absent,b.presentZero,+b.avg.toFixed(1),b.reqs,+b.perReq.toFixed(1),b.status,b.plan]),
-    [],["","متوسط الفريق",+S.teamAvg.toFixed(1)]],[8,18,12,14,10,14,12,16,70]),"ملخص الفريق");
+    [],["","متوسط الفريق",+S.teamAvg.toFixed(1)],...avgRankRows(S)],[8,22,14,14,14,18,16,16,70]),"ملخص الفريق");
   XLSX.utils.book_append_sheet(wb, sheet([["تاريخ العرض",...S.B.map(b=>b.name),"الإجمالي"],
     ...S.days.slice().reverse().map(d=>[d,...S.B.map(b=>attXls(b,d)),S.B.reduce((a,b)=>a+(b.per[d]||0),0)])],[12,...S.B.map(()=>14),10]),"يوم بيوم");
   XLSX.utils.book_append_sheet(wb, sheet(attRows(S),[12,18,22]),"الحضور والغياب");
