@@ -128,6 +128,24 @@ h1 span{color:var(--racing)}
 .ch-tip b{font-family:var(--digits);font-size:15px}
 .ch-tip i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-inline-end:6px;vertical-align:middle}
 .ch-hit{cursor:pointer}
+#chart svg{cursor:pointer}
+.legend span{cursor:pointer}
+.brief{margin-top:4px;border-top:1px solid var(--kerb);padding-top:12px;display:none}
+.brief.on{display:block}
+.brief-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.brief-h .tag{font-size:11px}
+.brief-h strong{font-size:15px}
+.brief-h i{display:inline-block;width:12px;height:12px;border-radius:3px}
+.brief-x{margin-inline-start:auto;font:inherit;font-size:12px;color:var(--smoke);background:transparent;border:1px solid var(--kerb);border-radius:8px;padding:3px 9px;cursor:pointer}
+.brief-s{font-size:13px;line-height:1.8;margin:0 0 8px}
+.brief-s b{color:var(--amber)}
+.brief-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.brief-chips span{font-size:12px;border:1px solid var(--kerb);border-radius:999px;padding:3px 10px;color:var(--smoke)}
+.brief-chips b{color:var(--chalk);font-family:var(--digits)}
+.brief-t{max-height:190px;overflow-y:auto;border:1px solid var(--kerb);border-radius:10px}
+.brief-t table{font-size:12.5px}
+.brief-t th{position:sticky;top:0;background:var(--carbon);z-index:1}
+.brief-t td,.brief-t th{padding:5px 8px}
 .rank-sw{display:inline-flex;gap:6px;margin-inline-start:auto}
 .rank-sw button[aria-pressed="true"]{background:var(--racing);color:#fff;border-color:var(--racing)}
 svg text{fill:var(--smoke);font-family:var(--digits);font-size:11px}
@@ -345,6 +363,7 @@ document.documentElement.setAttribute("data-theme",t)})();</script>
       <p class="note" style="margin:0" id="chartNote">إجمالي العروض المتراكم لكل موظف مع كل يوم في الفترة.</p>
       <div class="chart-wrap" id="chart"></div>
       <div class="legend" id="legend"></div>
+      <div class="brief" id="brief" aria-live="polite"></div>
     </div>
   </section>
 
@@ -448,7 +467,8 @@ document.addEventListener("click",function(e){ const sp=e.target && e.target.clo
     const n=C.days.length-1; let i=Math.round((C.W-C.pr-p.x)*n/(C.W-C.pl-C.pr)); i=Math.max(0,Math.min(n,i));
     const yOf=v=>C.pt+(C.H-C.pt-C.pb)*(1-v/C.top);
     let bi=-1, best=1e9; C.cum.forEach((c,k)=>{ const d=Math.abs(yOf(c[i])-p.y); if(d<best){ best=d; bi=k; } });
-    if(bi<0||best>18){ hide(); return; }
+    if(bi<0||best>18){ window.__CHBI=null; hide(); return; }
+    window.__CHBI=bi;
     const x=C.W-C.pr-(i*(C.W-C.pl-C.pr)/n), v=C.cum[bi][i], y=yOf(v);
     const gd=document.getElementById("chGuide"), dt=document.getElementById("chDot");
     if(gd){ gd.setAttribute("x1",x); gd.setAttribute("x2",x); gd.style.display=""; }
@@ -464,7 +484,43 @@ document.addEventListener("click",function(e){ const sp=e.target && e.target.clo
   }
   document.addEventListener("pointermove",function(e){ const w=document.getElementById("chart"); if(w && w.contains(e.target)) show(e); else hide(); });
   document.addEventListener("pointerdown",function(e){ const w=document.getElementById("chart"); if(w && w.contains(e.target)) show(e); });
+  document.addEventListener("click",function(e){
+    const lg=e.target && e.target.closest && e.target.closest("[data-brief]");
+    const w=document.getElementById("chart");
+    let name=null;
+    if(lg) name=lg.dataset.brief;
+    else if(w && w.contains(e.target)){ show(e); const C=window.__CH; if(C && window.__CHBI!=null) name=C.names[window.__CHBI]; }
+    else if(e.target && e.target.closest && e.target.closest(".brief-x")){ window.BRIEF_NAME=null; renderBrief(); return; }
+    if(!name) return;
+    window.BRIEF_NAME=name; renderBrief();
+    const el=document.getElementById("brief"); if(el && el.scrollIntoView) el.scrollIntoView({behavior:"smooth",block:"nearest"});
+  });
 })();
+function renderBrief(){
+  const el=document.getElementById("brief"); if(!el) return;
+  const name=window.BRIEF_NAME; const bi=name?DATA.buyers.indexOf(name):-1;
+  if(bi<0){ el.classList.remove("on"); el.innerHTML=""; return; }
+  const today=(DATA.updated||"").slice(0,10)||DATA.q.reduce((m,r)=>r[1]>m?r[1]:m,"");
+  const rk=P=>{ const S=stats(P); const i=S.B.findIndex(b=>b.name===name); return {pos:i+1, n:S.B.filter(b=>b.total>0).length||S.B.length, total:i>=0?S.B[i].total:0}; };
+  const y=rk("year"), m=rk("month"), c=rk(PERIOD);
+  const [from,to,label]=periodRange(today);
+  const QP=DATA.q.filter(r=>r[1]&&r[1]>=from&&r[1]<=to);
+  const days=[...new Set(QP.map(r=>r[1]))].sort();
+  const per={}; QP.forEach(r=>{ if(r[0]===bi) per[r[1]]=(per[r[1]]||0)+1; });
+  const dayRank=d=>{ const cnt={}; QP.forEach(r=>{ if(r[1]===d) cnt[r[0]]=(cnt[r[0]]||0)+1; }); const me=cnt[bi]||0; if(!me) return "—"; return 1+Object.values(cnt).filter(v=>v>me).length; };
+  let cum=0; const rows=days.map(d=>{ cum+=per[d]||0; return {d, n:per[d]||0, cum, rk:dayRank(d)}; }).reverse();
+  const active=Object.keys(per).length, tot=c.total, avg=active?(tot/active):0;
+  const best=Object.keys(per).sort((a,b)=>per[b]-per[a]||(a<b?1:-1))[0];
+  const ord=n=>["","الأول","التاني","التالت","الرابع","الخامس","السادس","السابع","التامن","التاسع","العاشر"][n]||("رقم "+n);
+  const color=TEAM[bi%TEAM.length];
+  const pname={today:"النهارده",week:"آخر 7 أيام",month:"الشهر",year:"السنة",all:"كل الفترة",range:"الفترة المختارة"}[PERIOD]||"الفترة";
+  const sent = `${esc(name)} في <b>المركز ${ord(y.pos)}</b> على مدار السنة (${num(y.total)} عرض)، و<b>المركز ${ord(m.pos)}</b> على مدار الشهر (${num(m.total)} عرض)` + (["year","month"].includes(PERIOD)?"":`، و<b>المركز ${ord(c.pos)}</b> في ${pname} (${num(c.total)} عرض)`) + ".";
+  el.innerHTML = `<div class="brief-h"><span class="tag">BRIEF</span><strong>الموجز</strong><i style="background:${color}"></i><strong>${esc(name)}</strong><button type="button" class="brief-x">قفل ✕</button></div>
+    <p class="brief-s">${sent}</p>
+    <div class="brief-chips"><span>${esc(label)}: <b>${num(tot)}</b> عرض</span><span>أيام فيها عروض: <b>${active}</b> من ${days.length}</span><span>متوسط اليوم: <b>${avg.toFixed(1)}</b></span>${best?`<span>أحسن يوم: <b>${fmtDay(best)}</b> (${per[best]})</span>`:""}</div>
+    <div class="brief-t"><table><thead><tr><th>اليوم</th><th>العروض</th><th>المتراكم</th><th>مركزه في اليوم</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${fmtDay(r.d)}</td>${r.n?`<td class="num click" data-b="${bi}" data-from="${r.d}" data-to="${r.d}" role="button" tabindex="0" title="اعرض الملفات">${r.n}</td>`:`<td class="num z">0</td>`}<td class="num">${num(r.cum)}</td><td class="num">${r.rk}</td></tr>`).join("")}</tbody></table></div>`;
+  el.classList.add("on");
+}
 function render(){
   const data = DATA;
   const today = (data.updated||"").slice(0,10) || data.q.reduce((m,r)=>r[1]>m?r[1]:m,"");
@@ -550,7 +606,8 @@ function render(){
     document.getElementById("chartNote").textContent="عدد عروض كل موظف في اليوم المختار.";
   }
   document.getElementById("chart").innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:420px" role="img" aria-label="سباق عروض الأسعار">${g}</svg><div class="ch-tip" id="chTip"></div>`;
-  document.getElementById("legend").innerHTML=B.map(b=>`<span style="--team:${b.color}"><i></i>${esc(b.name)}</span>`).join("");
+  document.getElementById("legend").innerHTML=B.map(b=>`<span style="--team:${b.color}" data-brief="${esc(b.name)}" role="button" tabindex="0" title="اعرض الموجز"><i></i>${esc(b.name)}</span>`).join("");
+  renderBrief();
 
   /* daily table: last 14 days of the period, newest first on the right */
   const show = (window.DAILY_ALL!==false) ? days.slice() : days.slice(-14);
