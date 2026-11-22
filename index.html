@@ -16,22 +16,30 @@
   --kerb:#24242a;
   --chalk:#f3f1ee;
   --smoke:#8d8b93;
-  --racing:#e10600;
+  --racing:#e10600; --racing-rgb:225,6,0;
   --amber:#ffc400;
   --gold:#e9c46a; --silver:#c9ccd3; --bronze:#c98a5a;
   --ok:#2bd17e; --warn:#ffb020; --crit:#ff3b30;
   --display:"Cairo","Titillium Web",system-ui,sans-serif;
   --digits:"Titillium Web","Cairo",system-ui,sans-serif;
   --panel:var(--panel); --panel2:var(--panel2); --line2:var(--line2); --zero:#55545b; --toast:#1e1e23; --ink-hi:#fff;
-  --glow1:rgba(225,6,0,.18); --glow2:rgba(255,196,0,.06);
+  --glow1:rgba(var(--racing-rgb),.18); --glow2:rgba(255,196,0,.06);
   color-scheme:dark;
 }
+:root[data-race="supply"]{--racing:#1a6dff;--racing-rgb:26,109,255}
+:root[data-race="supply"] .pit-overlay svg{filter:hue-rotate(218deg) saturate(1.15)}
+.race-btn{font:inherit;font-size:13px;font-weight:800;color:var(--chalk);background:var(--carbon);border:1px solid var(--kerb);border-radius:999px;padding:5px 12px 5px 6px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.race-btn:hover{border-color:var(--rb-col)}
+.race-btn .mini-flag{width:22px;height:22px;border-radius:5px;flex:none;background:conic-gradient(#fff 25%,#111 0 50%,#fff 0 75%,#111 0) 0 0/8px 8px;transform:skew(-10deg);box-shadow:0 0 0 2px var(--rb-col)}
+.race-btn b{color:var(--rb-col);font-weight:900}
+.race-note{display:none;margin:14px 0 0;padding:12px 14px;border-radius:12px;border:1px dashed var(--racing);color:var(--smoke);font-size:14px}
+:root[data-race="supply"] .race-note.empty{display:block}
 :root[data-theme="light"]{
   --asphalt:#f3f1ec; --carbon:#ffffff; --kerb:#dedad3; --chalk:#18181c; --smoke:#5f5d66;
   --amber:#a87400; --gold:#a8801f; --silver:#7d828c; --bronze:#9a5d30;
   --ok:#0f8a4f; --warn:#b06d00; --crit:#d42a20;
   --panel:#ffffff; --panel2:#faf8f5; --line2:#cfcac2; --zero:#b3b0b8; --toast:#ffffff; --ink-hi:#111;
-  --glow1:rgba(225,6,0,.08); --glow2:rgba(255,196,0,.10);
+  --glow1:rgba(var(--racing-rgb),.08); --glow2:rgba(255,196,0,.10);
   color-scheme:light;
 }
 .theme-btn{font:inherit;font-size:13px;font-weight:700;color:var(--chalk);background:var(--carbon);border:1px solid var(--kerb);
@@ -64,9 +72,9 @@ h1 span{color:var(--racing)}
 .sub{color:var(--smoke);font-size:14px;margin-top:4px}
 .live{display:flex;align-items:center;gap:10px;background:var(--carbon);border:1px solid var(--kerb);
   border-radius:999px;padding:8px 14px;font-size:13px;color:var(--smoke)}
-.dot{width:9px;height:9px;border-radius:50%;background:var(--racing);box-shadow:0 0 0 0 rgba(225,6,0,.7);animation:pulse 1.8s infinite}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--racing);box-shadow:0 0 0 0 rgba(var(--racing-rgb),.7);animation:pulse 1.8s infinite}
 .live b{color:var(--chalk);font-weight:700}
-@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(225,6,0,.6)}70%{box-shadow:0 0 0 10px rgba(225,6,0,0)}100%{box-shadow:0 0 0 0 rgba(225,6,0,0)}}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(var(--racing-rgb),.6)}70%{box-shadow:0 0 0 10px rgba(var(--racing-rgb),0)}100%{box-shadow:0 0 0 0 rgba(var(--racing-rgb),0)}}
 
 /* summary strip */
 .strip{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
@@ -217,7 +225,7 @@ tfoot td{font-weight:900;border-top:2px solid var(--racing)}
 .xgroup{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;margin-inline-start:auto}
 .xgroup .lbl{color:var(--smoke);font-size:12.5px}
 td.click{cursor:pointer;text-decoration:underline dotted;text-underline-offset:4px}
-td.click:hover{background:rgba(225,6,0,.14);color:var(--ink-hi)}
+td.click:hover{background:rgba(var(--racing-rgb),.14);color:var(--ink-hi)}
 .row .t.click{cursor:pointer}
 .row .t.click:hover{color:var(--amber)}
 .modal-back{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;padding:16px;z-index:50}
@@ -264,10 +272,10 @@ td.click:hover{background:rgba(225,6,0,.14);color:var(--ink-hi)}
 :root[data-theme="light"] .pit-overlay.on{background:rgba(238,236,231,.86)}
 .pit-overlay.leave{opacity:0}
 .pit-glow{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .8s ease .15s;
-  background:radial-gradient(55% 34% at 50% 64%,rgba(225,6,0,.30),transparent 70%),radial-gradient(30% 12% at 50% 70%,rgba(255,255,255,.06),transparent 70%)}
+  background:radial-gradient(55% 34% at 50% 64%,rgba(var(--racing-rgb),.30),transparent 70%),radial-gradient(30% 12% at 50% 70%,rgba(255,255,255,.06),transparent 70%)}
 .pit-overlay.on .pit-glow{opacity:1}
 .pit-lines{position:absolute;left:0;right:0;top:58%;height:110px;pointer-events:none;opacity:0;
-  background:repeating-linear-gradient(90deg,transparent 0 140px,rgba(225,6,0,.55) 140px 210px,transparent 210px 380px),repeating-linear-gradient(90deg,transparent 0 260px,rgba(255,255,255,.18) 260px 300px,transparent 300px 520px);
+  background:repeating-linear-gradient(90deg,transparent 0 140px,rgba(var(--racing-rgb),.55) 140px 210px,transparent 210px 380px),repeating-linear-gradient(90deg,transparent 0 260px,rgba(255,255,255,.18) 260px 300px,transparent 300px 520px);
   background-size:380px 2px,520px 1px;background-repeat:repeat-x;background-position:0 30px,0 80px;
   -webkit-mask:linear-gradient(90deg,transparent,#000 20%,#000 80%,transparent);mask:linear-gradient(90deg,transparent,#000 20%,#000 80%,transparent)}
 .pit-overlay.on .pit-lines{animation:pitLines 3.1s linear forwards}
@@ -323,14 +331,15 @@ document.documentElement.setAttribute("data-theme",t)})();</script>
     <div class="brand">
       <div class="flag" aria-hidden="true"></div>
       <div>
-        <h1>حلبة <span>المشتريات</span></h1>
-        <div class="sub">ترتيب أفراد المشتريات حسب عدد عروض الأسعار — More Safe</div>
+        <h1>حلبة <span id="raceName">المشتريات</span></h1>
+        <div class="sub" id="raceSub">ترتيب أفراد المشتريات حسب عدد عروض الأسعار — More Safe</div>
       </div>
     </div>
-    <div class="hdr-side"><button type="button" class="snd-btn" id="sndBtn" aria-label="صوت العربية"></button><button type="button" class="theme-btn" id="themeBtn" aria-label="تغيير لون الموقع"></button>
+    <div class="hdr-side"><button type="button" class="race-btn" id="raceBtn" style="--rb-col:#1a6dff"><span class="mini-flag" aria-hidden="true"></span><span>حلبة <b>التوريد</b></span></button><button type="button" class="snd-btn" id="sndBtn" aria-label="صوت العربية"></button><button type="button" class="theme-btn" id="themeBtn" aria-label="تغيير لون الموقع"></button>
       <div class="live" role="status"><span class="dot" aria-hidden="true"></span><span>بث مباشر · آخر تحديث <b id="updated" class="num">—</b></span></div>
     </div>
   </header>
+  <div class="race-note" id="raceNote">لسه مفيش بيانات لحلبة التوريد. أول ما يتربط فولدر عروض التوريد، الترتيب والجداول هيظهروا هنا بنفس الشكل.</div>
 
   <div class="bar-row">
     <div class="tabs" role="group" aria-label="الفترة">
@@ -457,7 +466,20 @@ function normData(d){
     return Object.assign({}, d, {buyers:uniq, q});
   }catch(e){ return d; }
 }
-let DATA = normData(SNAPSHOT), PERIOD = "month", RFROM = "", RTO = "";
+let RACE = (location.hash||"").replace("#","")==="supply" ? "supply" : "purchase";
+let PDATA = normData(SNAPSHOT), SDATA = (typeof SUPPLY_SNAPSHOT!=="undefined") ? normData(SUPPLY_SNAPSHOT) : {updated:"",basis:"quote-date",buyers:[],requests:[],q:[],att:{}};
+let DATA = RACE==="supply" ? SDATA : PDATA, PERIOD = "month", RFROM = "", RTO = "";
+function applyRace(){
+  const sup = RACE==="supply"; document.documentElement.setAttribute("data-race", RACE);
+  const nm=document.getElementById("raceName"), sb=document.getElementById("raceSub"), bt=document.getElementById("raceBtn"), nt=document.getElementById("raceNote");
+  if(nm) nm.textContent = sup ? "التوريد" : "المشتريات";
+  if(sb) sb.textContent = sup ? "ترتيب أفراد التوريد حسب عدد عروض الأسعار — More Safe" : "ترتيب أفراد المشتريات حسب عدد عروض الأسعار — More Safe";
+  document.title = sup ? "حلبة التوريد" : "حلبة المشتريات";
+  if(bt){ bt.style.setProperty("--rb-col", sup ? "#e10600" : "#1a6dff"); bt.querySelector("b").textContent = sup ? "المشتريات" : "التوريد"; bt.setAttribute("aria-label", sup ? "روحي لحلبة المشتريات" : "روحي لحلبة التوريد"); }
+  DATA = sup ? SDATA : PDATA; window.BRIEF_NAME = null;
+  if(nt) nt.classList.toggle("empty", sup && !(DATA.q||[]).length);
+}
+document.documentElement.setAttribute("data-race", RACE);
 try { RFROM = localStorage.getItem("race-rfrom")||""; RTO = localStorage.getItem("race-rto")||""; } catch(e){}
 try { const s = localStorage.getItem("race-period"); if (s) PERIOD = s; } catch(e){}
 
@@ -514,7 +536,7 @@ function renderBrief(){
   const el=document.getElementById("brief"); if(!el) return;
   const name=window.BRIEF_NAME; const bi=name?DATA.buyers.indexOf(name):-1;
   if(bi<0){ el.classList.remove("on"); el.innerHTML=""; return; }
-  const today=(DATA.updated||"").slice(0,10)||DATA.q.reduce((m,r)=>r[1]>m?r[1]:m,"");
+  const today=(DATA.updated||"").slice(0,10)||(DATA.q.reduce((m,r)=>r[1]>m?r[1]:m,"")||new Date().toISOString().slice(0,10));
   const rk=P=>{ const S=stats(P); const i=S.B.findIndex(b=>b.name===name); return {pos:i+1, n:S.B.filter(b=>b.total>0).length||S.B.length, total:i>=0?S.B[i].total:0}; };
   const y=rk("year"), m=rk("month"), c=rk(PERIOD);
   const [from,to,label]=periodRange(today);
@@ -537,7 +559,7 @@ function renderBrief(){
 }
 function render(){
   const data = DATA;
-  const today = (data.updated||"").slice(0,10) || data.q.reduce((m,r)=>r[1]>m?r[1]:m,"");
+  const today = (data.updated||"").slice(0,10) || (data.q.reduce((m,r)=>r[1]>m?r[1]:m,"")||new Date().toISOString().slice(0,10));
   const [from,to,label] = periodRange(today);
   document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.p===PERIOD));
   document.querySelectorAll("[data-setp]").forEach(b=>b.setAttribute("aria-pressed", b.dataset.setp===PERIOD));
@@ -730,7 +752,7 @@ document.getElementById("mZip").addEventListener("click", async e=>{
 });
 
 function stats(P){
-  const today=(DATA.updated||"").slice(0,10)||DATA.q.reduce((m,r)=>r[1]>m?r[1]:m,"");
+  const today=(DATA.updated||"").slice(0,10)||(DATA.q.reduce((m,r)=>r[1]>m?r[1]:m,"")||new Date().toISOString().slice(0,10));
   const keep=PERIOD; PERIOD=P; const [from,to,label]=periodRange(today); PERIOD=keep;
   const Q=DATA.q.filter(r=>r[1]&&r[1]>=from&&r[1]<=to);
   const days=[...new Set(Q.map(r=>r[1]))].sort();
@@ -808,7 +830,10 @@ document.getElementById("repTop").addEventListener("click", async ()=>{
   await writeBook(wb, `تقرير أفضل 3 - ${S.today}.xlsx`);
 });
 
+applyRace();
 render();
+document.getElementById("raceBtn").addEventListener("click",()=>{ location.hash = RACE==="supply" ? "purchase" : "supply"; });
+window.addEventListener("hashchange",()=>{ const r=(location.hash||"").replace("#","")==="supply"?"supply":"purchase"; if(r===RACE) return; RACE=r; applyRace(); render(); window.scrollTo({top:0,behavior:"smooth"}); });
 
 (async () => {
   try {
@@ -819,7 +844,7 @@ render();
       const kf=(n,z)=>String(n).replace(/\uFFFD/g,"").replace(/\s+/g," ").trim().toLowerCase()+"|"+z;
       const gmap={}; SNAPSHOT.q.forEach(r=>{ if(r[6]) gmap[kf(r[4],r[5])]=[r[6],r[7]||0]; });
       d.q = d.q.map(r=> (r[6] || !gmap[kf(r[4],r[5])]) ? r : r.slice(0,6).concat(gmap[kf(r[4],r[5])]));
-      DATA = normData(d); render(); }
+      PDATA = normData(d); if(RACE!=="supply"){ DATA=PDATA; render(); } }
   } catch (e) { /* keep the embedded snapshot */ }
 })();
 </script>
@@ -1020,7 +1045,7 @@ if(ATT_URL){ loadSheetAtt(); setInterval(loadSheetAtt, 120000); }
 <script>(function(){
 /* ---------- engine sound (synthesised, no files) ---------- */
 var ctx=null;
-function soundOn(){try{return localStorage.getItem("race-sound")!=="off"}catch(e){return true}}
+function soundOn(){try{return localStorage.getItem("race-sound")==="on"}catch(e){return false}}
 function getCtx(){ if(!ctx){var A=window.AudioContext||window.webkitAudioContext; if(!A) return null; ctx=new A();} return ctx; }
 function unlock(){ var c=getCtx(); if(c&&c.state==="suspended") c.resume(); }
 ["pointerdown","keydown","touchstart"].forEach(function(ev){window.addEventListener(ev,unlock,{passive:true});});
