@@ -426,13 +426,13 @@ function attMerged(){ const out={}; [ (DATA&&DATA.att)||{}, SHEETATT, ATT ].forE
 function attAll(){ const m=attMerged(), r={}; Object.keys(m).forEach(k=>{ if(m[k].s){ const p=k.indexOf("|"); const kk = p>0 ? k.slice(0,p)+"|"+canonName(k.slice(p+1)) : k; if(!r[kk] || kk===k) r[kk]=m[k].s; } }); return r; }
 function attOf(name,d){ return attAll()[d+"|"+name]||""; }
 function absentIn(name,days){ const a=attAll(); return days.filter(d=>a[d+"|"+name]==="absent").length; }
-function presentZeroIn(name,days,per){ const a=attAll(); return days.filter(d=>!per[d] && a[d+"|"+name]!=="absent").length; }
+function presentZeroIn(name,days,per){ const a=attAll(); return days.filter(d=>!per[d] && a[d+"|"+name]!=="absent" && a[d+"|"+name]!=="late").length; }
 function lateIn(name,days,per){ const a=attAll(); return days.filter(d=>per[d] && a[d+"|"+name]==="late").length; }
 function attCell(name,d){ const v=attOf(name,d);
   const inner = v==="absent" ? '<span class="att-a">غ</span>' : '<span class="att-p"><i></i>0</span>';
   const tip = v==="absent" ? "غياب — اضغطي للتعديل" : (v==="present" ? "حضور وما جابش عروض اسعار — اضغطي للتعديل" : "حضور وما جابش عروض اسعار (تلقائي) — اضغطي لتسجيل غياب");
   return `<td class="num z att" data-an="${esc(name)}" data-ad="${d}" role="button" tabindex="0" title="${tip}">${inner}</td>`; }
-function attXls(b,d){ if(b.per[d]) return attOf(b.name,d)==="late" ? b.per[d]+" (غايب - العرض متأخر)" : b.per[d]; const v=attOf(b.name,d); return v==="absent"?"غياب":0; }
+function attXls(b,d){ const v=attOf(b.name,d); if(v==="late") return "غياب (عروضه على اليوم اللي قبله)"; if(b.per[d]) return b.per[d]; return v==="absent"?"غياب":0; }
 const fmtDay = d => { const [y,m,dd] = d.split("-"); return `${+dd}/${+m}`; };
 const isFri = d => /^\d{4}-\d{2}-\d{2}$/.test(d||"") && new Date(d+"T00:00:00Z").getUTCDay()===5;
 const fdH = d => isFri(d) ? `<span class="fri" title="جمعة">${fmtDay(d)}</span>` : fmtDay(d);
@@ -729,8 +729,11 @@ function stats(P){
   const Q=DATA.q.filter(r=>r[1]&&r[1]>=from&&r[1]<=to);
   const days=[...new Set(Q.map(r=>r[1]))].sort();
   const B=DATA.buyers.map((name,i)=>{const mine=Q.filter(r=>r[0]===i); const per={}; mine.forEach(r=>per[r[1]]=(per[r[1]]||0)+1);
-    const total=mine.length, active=Object.keys(per).length, reqs=new Set(mine.map(r=>r[2])).size;
-    return {name,bi:i,mine,per,total,active,reqs,avg:active?total/active:0,perReq:reqs?total/reqs:0,absent:absentIn(name,days),presentZero:presentZeroIn(name,days,per),late:lateIn(name,days,per)};}).sort((a,b)=>b.total-a.total||b.avg-a.avg);
+    /* يوم «غايب بس العرض اتبعت متأخر» = يوم غياب، وعروضه بتتحسب على اليوم اللي قبله */
+    const lateDays=days.filter(d=>attOf(name,d)==="late"); const moved={};
+    lateDays.forEach(d=>{ if(!per[d]) return; let prev=days.filter(x=>x<d && !isFri(x)).pop(); if(!prev){ prev=addDays(d,-1); if(isFri(prev)) prev=addDays(prev,-1); } per[prev]=(per[prev]||0)+per[d]; moved[prev]=(moved[prev]||0)+per[d]; delete per[d]; });
+    const total=mine.length, active=Object.keys(per).length, reqs=new Set(mine.map(r=>r[2])).size, late=lateDays.length;
+    return {name,bi:i,mine,per,moved,total,active,reqs,avg:active?total/active:0,perReq:reqs?total/reqs:0,absent:absentIn(name,days)+late,presentZero:presentZeroIn(name,days,per),late};}).sort((a,b)=>b.total-a.total||b.avg-a.avg);
   const n=B.length||1, teamTotal=B.reduce((a,b)=>a+b.total,0), teamAvg=teamTotal/n;
   const act=B.reduce((a,b)=>a+b.active,0), teamDayAvg=act?teamTotal/act:0;
   const teamReqs=new Set(Q.map(r=>r[0]+":"+r[2])).size, teamPerReq=teamReqs?teamTotal/teamReqs:0;
@@ -763,7 +766,7 @@ async function exportPeriod(P){
   if(typeof XLSX==="undefined"){ toast("مكتبة Excel مش محمّلة، جرّبي تاني."); return; }
   const S=stats(P); const wb=newBook();
   XLSX.utils.book_append_sheet(wb, sheet([[`عروض الأسعار — ${PNAME[P]}: ${S.label}`],[`آخر تحديث: ${DATA.updated||""}`],[],
-    ["المركز","موظف المشتريات","عدد العروض","أيام فيها عروض","أيام غياب","غايب بس العرض اتبعت متأخر","حضور وما جابش عروض اسعار","متوسط/يوم","طلبات الاحتياج","الحالة"],
+    ["المركز","موظف المشتريات","عدد العروض","أيام فيها عروض","أيام غياب (الإجمالي)","منها: غايب والعرض اتبعت متأخر","حضور وما جابش عروض اسعار","متوسط/يوم (على أيام الحضور)","طلبات الاحتياج","الحالة"],
     ...S.B.map(b=>[b.pos,b.name,b.total,b.active,b.absent,b.late,b.presentZero,+b.avg.toFixed(1),b.reqs,b.status]),["","الإجمالي",S.teamTotal,"","","","","",S.teamReqs,""],...avgRankRows(S)],[8,22,14,14,14,20,18,16,14,16]),"الترتيب");
   XLSX.utils.book_append_sheet(wb, sheet([["تاريخ العرض",...S.B.map(b=>b.name),"الإجمالي"],
     ...S.days.slice().reverse().map(d=>[d,...S.B.map(b=>attXls(b,d)),S.B.reduce((a,b)=>a+(b.per[d]||0),0)])],[12,...S.B.map(()=>14),10]),"حسب التاريخ");
@@ -777,7 +780,7 @@ document.getElementById("repAll").addEventListener("click", async ()=>{
   if(typeof XLSX==="undefined") return toast("مكتبة Excel مش محمّلة، جرّبي تاني.");
   const S=stats(PERIOD); const wb=newBook();
   XLSX.utils.book_append_sheet(wb, sheet([[`التقرير المجمّع — ${S.label}`],[`آخر تحديث: ${DATA.updated||""}`],[],
-    ["المركز","موظف المشتريات","عدد العروض","أيام فيها عروض","أيام غياب","غايب بس العرض اتبعت متأخر","حضور وما جابش عروض اسعار","متوسط/يوم","طلبات الاحتياج","عروض لكل طلب","الحالة","الخطة"],
+    ["المركز","موظف المشتريات","عدد العروض","أيام فيها عروض","أيام غياب (الإجمالي)","منها: غايب والعرض اتبعت متأخر","حضور وما جابش عروض اسعار","متوسط/يوم (على أيام الحضور)","طلبات الاحتياج","عروض لكل طلب","الحالة","الخطة"],
     ...S.B.map(b=>[b.pos,b.name,b.total,b.active,b.absent,b.late,b.presentZero,+b.avg.toFixed(1),b.reqs,+b.perReq.toFixed(1),b.status,b.plan]),
     [],["","متوسط الفريق",+S.teamAvg.toFixed(1)],...avgRankRows(S)],[8,22,14,14,14,18,16,16,70]),"ملخص الفريق");
   XLSX.utils.book_append_sheet(wb, sheet([["تاريخ العرض",...S.B.map(b=>b.name),"الإجمالي"],
