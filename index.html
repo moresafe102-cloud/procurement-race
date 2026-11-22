@@ -182,6 +182,8 @@ td.att:hover{background:rgba(255,196,0,.10);color:var(--chalk)}
 .matt{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 0 2px;font-size:13px;color:var(--smoke)}
 .matt button{font:inherit;font-size:12.5px;font-weight:700;border-radius:8px;padding:6px 11px;cursor:pointer;border:1px solid var(--kerb);background:var(--panel);color:var(--chalk)}
 .matt button[aria-pressed="true"]{border-color:var(--racing);box-shadow:inset 0 0 0 1px var(--racing)}
+.fri{color:#ff3b30!important;font-weight:800}
+th.fri,td.fri{color:#ff3b30!important}
 .att-legend{display:flex;flex-wrap:wrap;gap:14px;align-items:center;font-size:12.5px;color:var(--smoke);margin-top:10px}
 .att-pop{position:fixed;z-index:70;display:none;flex-direction:column;gap:6px;min-width:230px;background:var(--carbon);border:1px solid var(--kerb);border-radius:12px;padding:12px;box-shadow:0 18px 40px rgba(0,0,0,.45)}
 .att-pop.open{display:flex}
@@ -432,6 +434,8 @@ function attCell(name,d){ const v=attOf(name,d);
   return `<td class="num z att" data-an="${esc(name)}" data-ad="${d}" role="button" tabindex="0" title="${tip}">${inner}</td>`; }
 function attXls(b,d){ if(b.per[d]) return attOf(b.name,d)==="late" ? b.per[d]+" (غايب - العرض متأخر)" : b.per[d]; const v=attOf(b.name,d); return v==="absent"?"غياب":0; }
 const fmtDay = d => { const [y,m,dd] = d.split("-"); return `${+dd}/${+m}`; };
+const isFri = d => /^\d{4}-\d{2}-\d{2}$/.test(d||"") && new Date(d+"T00:00:00Z").getUTCDay()===5;
+const fdH = d => isFri(d) ? `<span class="fri" title="جمعة">${fmtDay(d)}</span>` : fmtDay(d);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const num = n => Number(n).toLocaleString("en-US");
 const addDays = (iso,k) => { const d=new Date(iso+"T00:00:00Z"); d.setUTCDate(d.getUTCDate()+k); return d.toISOString().slice(0,10); };
@@ -481,7 +485,7 @@ document.addEventListener("click",function(e){ const sp=e.target && e.target.clo
     document.querySelectorAll("#chart .ch-line").forEach(l=>l.style.opacity = (+l.dataset.bi===bi) ? "1" : ".18");
     const dayN = i>0 ? v - C.cum[bi][i-1] : v;
     const t=document.getElementById("chTip"); if(!t) return;
-    t.innerHTML=`<div><i style="background:${C.colors[bi]}"></i><strong>${esc(C.names[bi])}</strong></div><div><b>${num(v)}</b> عرض لحد ${fmtDay(C.days[i])}</div><div style="color:var(--smoke)">في اليوم ده: ${num(dayN)}</div>`;
+    t.innerHTML=`<div><i style="background:${C.colors[bi]}"></i><strong>${esc(C.names[bi])}</strong></div><div><b>${num(v)}</b> عرض لحد ${fdH(C.days[i])}</div><div style="color:var(--smoke)">في اليوم ده: ${num(dayN)}</div>`;
     t.style.display="block";
     const r=wrap.getBoundingClientRect(); let lx=ev.clientX-r.left+wrap.scrollLeft+14, ly=ev.clientY-r.top-t.offsetHeight-12; if(ly<0) ly=ev.clientY-r.top+14; if(ly+t.offsetHeight>wrap.clientHeight) ly=Math.max(0,wrap.clientHeight-t.offsetHeight-2);
     if(lx+t.offsetWidth>wrap.scrollWidth) lx=ev.clientX-r.left+wrap.scrollLeft-t.offsetWidth-14;
@@ -523,7 +527,7 @@ function renderBrief(){
   el.innerHTML = `<div class="brief-h"><span class="tag">BRIEF</span><strong>الموجز</strong><i style="background:${color}"></i><strong>${esc(name)}</strong><button type="button" class="brief-x">قفل ✕</button></div>
     <p class="brief-s">${sent}</p>
     <div class="brief-chips"><span>${esc(label)}: <b>${num(tot)}</b> عرض</span><span>أيام فيها عروض: <b>${active}</b> من ${days.length}</span><span>متوسط اليوم: <b>${avg.toFixed(1)}</b></span>${best?`<span>أحسن يوم: <b>${fmtDay(best)}</b> (${per[best]})</span>`:""}</div>
-    <div class="brief-t"><table><thead><tr><th>اليوم</th><th>العروض</th><th>المتراكم</th><th>مركزه في اليوم</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${fmtDay(r.d)}</td>${r.n?`<td class="num click" data-b="${bi}" data-from="${r.d}" data-to="${r.d}" role="button" tabindex="0" title="اعرض الملفات">${r.n}</td>`:`<td class="num z">0</td>`}<td class="num">${num(r.cum)}</td><td class="num">${r.rk}</td></tr>`).join("")}</tbody></table></div>`;
+    <div class="brief-t"><table><thead><tr><th>اليوم</th><th>العروض</th><th>المتراكم</th><th>مركزه في اليوم</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${fdH(r.d)}</td>${r.n?`<td class="num click" data-b="${bi}" data-from="${r.d}" data-to="${r.d}" role="button" tabindex="0" title="اعرض الملفات">${r.n}</td>`:`<td class="num z">0</td>`}<td class="num">${num(r.cum)}</td><td class="num">${r.rk}</td></tr>`).join("")}</tbody></table></div>`;
   el.classList.add("on");
 }
 function render(){
@@ -559,7 +563,7 @@ function render(){
   document.getElementById("updated").textContent = data.updated || "—";
   document.getElementById("tTotal").textContent = num(teamTotal);
   document.getElementById("tToday").firstChild.textContent = num(data.q.filter(r=>r[1]===today).length);
-  document.getElementById("tTodayDate").textContent = today? "بتاريخ "+fmtDay(today):"";
+  document.getElementById("tTodayDate").innerHTML = today? "بتاريخ "+fdH(today):"";
   document.getElementById("tReq").textContent = num(teamReqs);
   document.getElementById("tDays").textContent = days.length;
 
@@ -572,7 +576,7 @@ function render(){
       <div class="tot"><b>${num(b.total)}</b>عرض سعر</div>
       <div class="meta">
         <span class="chip">${b.avg.toFixed(1)} عرض/يوم نشاط</span>
-        ${bestDay?`<span class="chip">أفضل يوم ${fmtDay(bestDay)}: ${best}</span>`:""}
+        ${bestDay?`<span class="chip">أفضل يوم ${fdH(bestDay)}: ${best}</span>`:""}
         <span class="chip">${b.reqs} طلب احتياج</span>
       </div></article>`;}).join("") : `<p class="empty">مفيش عروض بتاريخ الفترة دي لسه.</p>`;
 
@@ -595,7 +599,7 @@ function render(){
     const xs=i=>W-pr-(i*(W-pl-pr)/(days.length-1)), ys=v=>pt+(H-pt-pb)*(1-v/top);
     for(let k=0;k<=4;k++){const v=top*k/4,y=ys(v); g+=`<line x1="${pl}" x2="${W-pr}" y1="${y}" y2="${y}" style="stroke:var(--kerb)"/><text x="${W-pr+8}" y="${y+4}">${num(Math.round(v))}</text>`;}
     const every=Math.ceil(days.length/8);
-    days.forEach((d,i)=>{ if(i%every===0||i===days.length-1) g+=`<text x="${xs(i)}" y="${H-10}" text-anchor="middle">${fmtDay(d)}</text>`; });
+    days.forEach((d,i)=>{ if(i%every===0||i===days.length-1) g+=`<text x="${xs(i)}" y="${H-10}" text-anchor="middle"${isFri(d)?' fill="#ff3b30" style="fill:#ff3b30;font-weight:800"':""}>${fmtDay(d)}</text>`; });
     window.__CH = {days, cum, names:B.map(b=>b.name), colors:B.map(b=>b.color), W, pl, pr, top, pt, pb, H};
     B.forEach((b,bi)=>{ g+=`<polyline class="ch-line" data-bi="${bi}" points="${cum[bi].map((v,i)=>`${xs(i)},${ys(v)}`).join(" ")}" fill="none" stroke="${b.color}" stroke-width="${bi<3?3:2}" stroke-linejoin="round" opacity="${bi<3?1:.7}"/>`;
       const L=days.length-1; g+=`<circle cx="${xs(L)}" cy="${ys(cum[bi][L])}" r="${bi<3?5:3.5}" fill="${b.color}" style="stroke:var(--asphalt)" stroke-width="2"/>`;
@@ -625,7 +629,7 @@ function render(){
   const olderHead = hasOlder ? `<th class="num" title="كل العروض اللي تاريخها قبل ${fmtDay(show[0])}">قبل ${fmtDay(show[0])}</th>` : "";
   const olderCell = b => { if(!hasOlder) return ""; const x=olderOf(b); return x ? `<td class="num click" data-b="${b.bi}" data-from="${from}" data-to="${olderTo}" role="button" tabindex="0" title="اعرض الملفات">${x}</td>` : `<td class="num z">0</td>`; };
   const olderFoot = hasOlder ? `<td class="num">${num(B.reduce((s,b)=>s+olderOf(b),0))}</td>` : "";
-  document.getElementById("daily").innerHTML = show.length ? `<table><thead><tr><th>الموظف</th>${show.slice().reverse().map(d=>`<th class="num">${fmtDay(d)}</th>`).join("")}${olderHead}<th>الإجمالي</th><th>طلبات</th></tr></thead>
+  document.getElementById("daily").innerHTML = show.length ? `<table><thead><tr><th>الموظف</th>${show.slice().reverse().map(d=>`<th class="num${isFri(d)?" fri":""}"${isFri(d)?' title="جمعة"':""}>${fmtDay(d)}</th>`).join("")}${olderHead}<th>الإجمالي</th><th>طلبات</th></tr></thead>
     <tbody>${B.map(b=>`<tr><td><span class="dotd" style="background:${b.color}"></span>${esc(b.name)}</td>${
       idx.slice().reverse().map((i,k)=>{const x=b.daily[i], mx=dayMax[idx.length-1-k], d=days[i]; return x? `<td class="num click ${x===mx?"hi":""}" data-b="${b.bi}" data-from="${d}" data-to="${d}" role="button" tabindex="0" title="${attOf(b.name,d)==="late"?"غايب بس العرض اتبعت متأخر — ":""}اعرض الملفات">${x}${attOf(b.name,d)==="late"?'<span class="att-l">غ</span>':""}</td>` : attCell(b.name,d);}).join("")}${olderCell(b)}<td class="num ${b.total?"click":""}" ${b.total?`data-b="${b.bi}" data-from="${from}" data-to="${to}" role="button" tabindex="0"`:""}><b>${num(b.total)}</b></td><td class="num">${b.reqs}</td></tr>`).join("")}</tbody>
     <tfoot><tr><td>الإجمالي</td>${idx.slice().reverse().map(i=>`<td class="num">${num(B.reduce((a,b)=>a+b.daily[i],0))}</td>`).join("")}${olderFoot}<td class="num">${num(teamTotal)}</td><td class="num">${teamReqs}</td></tr></tfoot></table>` : `<p class="empty">مفيش عروض في الفترة دي.</p>`;
@@ -674,19 +678,19 @@ function openModal(bi, from, to){
   const name = DATA.buyers[bi];
   CUR = DATA.q.filter(r=>r[0]===bi && r[1]>=from && r[1]<=to).sort((a,b)=> a[1]<b[1]?1:-1);
   document.getElementById("mTitle").textContent = `${name} · ${CUR.length} عرض سعر`;
-  document.getElementById("mSub").textContent = from===to ? `بتاريخ ${fmtDay(from)}` : `من ${fmtDay(CUR.length?CUR[CUR.length-1][1]:from)} لحد ${fmtDay(CUR.length?CUR[0][1]:to)}`;
+  document.getElementById("mSub").innerHTML = from===to ? `بتاريخ ${fdH(from)}` : `من ${fmtDay(CUR.length?CUR[CUR.length-1][1]:from)} لحد ${fmtDay(CUR.length?CUR[0][1]:to)}`;
   const ready = CUR.filter(urlOf).length;
   document.getElementById("mList").innerHTML = CUR.map((r,k)=>{
     const u = urlOf(r);
     return `<div class="qitem"><div><div class="q1">${esc(r[3]||r[4])}</div>
-      <div class="q2">${fmtDay(r[1])} · ${esc(DATA.requests[r[2]]||"")}${r[3]?" · "+esc(r[4]):""}</div></div>
+      <div class="q2">${fdH(r[1])} · ${esc(DATA.requests[r[2]]||"")}${r[3]?" · "+esc(r[4]):""}</div></div>
       <div class="acts">${gView(r)?`<a class="xbtn" href="${gView(r)}" target="_blank" rel="noopener">فتح</a><a class="xbtn" href="${gDown(r)}" target="_blank" rel="noopener">${r[7]?"تحميل (rar)":"تحميل"}</a>`:(u?`<a class="xbtn" href="${u}" target="_blank" rel="noopener">فتح</a><button type="button" class="xbtn" data-dl="${k}">تحميل</button>`:`<a class="xbtn" href="${PUBLIC_FOLDER}" target="_blank" rel="noopener">الفولدر</a>`)}</div></div>`;}).join("");
   const z=document.getElementById("mZip"); z.style.display = (DL && ready && typeof JSZip!=="undefined") ? "" : "none";
   const inRar = CUR.filter(r=>!r[6]||r[7]).length;
   document.getElementById("mNote").innerHTML = inRar ? `${inRar} من العروض دي ملفها جوه ملف مضغوط أو في <a href="${PUBLIC_FOLDER}" target="_blank" rel="noopener" style="color:var(--amber)">الفولدر العام</a>.` : "";
   const ma=document.getElementById("mAtt");
   if(from===to && CUR.length){ const v=attOf(name,from);
-    ma.innerHTML=`<span>الحضور يوم ${fmtDay(from)}:</span><button type="button" data-ma="" aria-pressed="${v!=="late"}">حضور</button><button type="button" data-ma="late" aria-pressed="${v==="late"}">غايب بس العرض اتبعت متأخر</button>`;
+    ma.innerHTML=`<span>الحضور يوم ${fdH(from)}:</span><button type="button" data-ma="" aria-pressed="${v!=="late"}">حضور</button><button type="button" data-ma="late" aria-pressed="${v==="late"}">غايب بس العرض اتبعت متأخر</button>`;
     ma.dataset.k=from+"|"+name; ma.hidden=false; } else { ma.hidden=true; ma.innerHTML=""; }
   document.getElementById("mback").classList.add("open");
   document.getElementById("mClose").focus();
