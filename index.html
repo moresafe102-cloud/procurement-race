@@ -852,6 +852,8 @@ window.addEventListener("hashchange",()=>{ const r=(location.hash||"").replace("
     const res = await fetch("data.json?t=" + Date.now(), {cache:"no-store"});
     if (!res.ok) return;
     const d = await res.json();
+    if (d && d.supply && Array.isArray(d.supply.buyers) && Array.isArray(d.supply.q) && d.supply.q.length) {
+      SDATA = normData(d.supply); if(RACE==="supply"){ DATA=SDATA; const nt=document.getElementById("raceNote"); if(nt) nt.classList.remove("empty"); render(); } }
     if (d && Array.isArray(d.buyers) && Array.isArray(d.q) && d.q.length) {
       const kf=(n,z)=>String(n).replace(/\uFFFD/g,"").replace(/\s+/g," ").trim().toLowerCase()+"|"+z;
       const gmap={}; SNAPSHOT.q.forEach(r=>{ if(r[6]) gmap[kf(r[4],r[5])]=[r[6],r[7]||0]; });
