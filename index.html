@@ -335,7 +335,7 @@ document.documentElement.setAttribute("data-theme",t)})();</script>
         <div class="sub" id="raceSub">ترتيب أفراد المشتريات حسب عدد عروض الأسعار — More Safe</div>
       </div>
     </div>
-    <div class="hdr-side"><button type="button" class="race-btn" id="raceBtn" style="--rb-col:#1a6dff"><span class="mini-flag" aria-hidden="true"></span><span>حلبة <b>التوريد</b></span></button><button type="button" class="snd-btn" id="sndBtn" aria-label="صوت العربية"></button><button type="button" class="theme-btn" id="themeBtn" aria-label="تغيير لون الموقع"></button>
+    <div class="hdr-side"><button type="button" class="race-btn" id="raceBtn" style="--rb-col:#1a6dff"><span class="mini-flag" aria-hidden="true"></span><span>حلبة <b>التوريد</b></span></button><button type="button" class="theme-btn" id="themeBtn" aria-label="تغيير لون الموقع"></button>
       <div class="live" role="status"><span class="dot" aria-hidden="true"></span><span>بث مباشر · آخر تحديث <b id="updated" class="num">—</b></span></div>
     </div>
   </header>
@@ -1045,7 +1045,7 @@ if(ATT_URL){ loadSheetAtt(); setInterval(loadSheetAtt, 120000); }
 <script>(function(){
 /* ---------- engine sound (synthesised, no files) ---------- */
 var ctx=null;
-function soundOn(){try{return localStorage.getItem("race-sound")==="on"}catch(e){return false}}
+function soundOn(){return false}
 function getCtx(){ if(!ctx){var A=window.AudioContext||window.webkitAudioContext; if(!A) return null; ctx=new A();} return ctx; }
 function unlock(){ var c=getCtx(); if(c&&c.state==="suspended") c.resume(); }
 ["pointerdown","keydown","touchstart"].forEach(function(ev){window.addEventListener(ev,unlock,{passive:true});});
@@ -1081,12 +1081,12 @@ function engine(){
   [1.30,1.52,2.62,2.80].forEach(function(at){ var b=c.createBufferSource(); b.buffer=n; var pg=c.createGain(); pg.gain.setValueAtTime(0.5,t+at); pg.gain.exponentialRampToValueAtTime(0.0001,t+at+0.06); var hp=c.createBiquadFilter(); hp.type="highpass"; hp.frequency.value=900; b.connect(hp); hp.connect(pg); pg.connect(master); b.start(t+at,Math.random(),0.08); });
 }
 /* ---------- sound button ---------- */
-var sb=document.getElementById("sndBtn");
+var sb=document.getElementById("sndBtn"); if(sb){
 var on='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>';
 var off='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="m22 9-6 6M16 9l6 6"/></svg>';
 function paintS(){var o=soundOn(); sb.innerHTML=(o?on:off)+"<span>"+(o?"الصوت":"بدون صوت")+"</span>"; sb.setAttribute("aria-pressed",o?"true":"false");}
 sb.addEventListener("click",function(){var o=!soundOn(); try{localStorage.setItem("race-sound",o?"on":"off")}catch(e){} paintS(); if(o){unlock(); play(false);} });
-paintS();
+paintS(); }
 /* ---------- intro on every load + every 30 minutes ---------- */
 var ov=document.getElementById("pitOverlay"), EVERY=30*60*1000, running=false;
 function busy(){var m=document.getElementById("mback");return m&&m.classList.contains("open");}
