@@ -381,7 +381,7 @@ document.documentElement.setAttribute("data-theme",t)})();</script>
         <button type="button" class="xbtn" data-x="month">شهر</button>
         <button type="button" class="xbtn" data-x="all">الفترة كلها</button></span></div>
     <div class="daily" id="daily"></div>
-    <div class="att-legend"><span><span class="att-a">غ</span> غياب</span><span><span class="att-p"><i></i>0</span> حضور وما جابش عروض اسعار (التلقائي)</span><span>3<span class="att-l">غ</span> غايب بس العرض اتبعت متأخر</span><span>اضغطي على أي صفر علشان تسجّلي غياب، أو افتحي أي رقم واختاري «غايب بس العرض اتبعت متأخر». لو مااخترتيش حاجة يبقى حضور.</span></div>
+    <div class="att-legend"><span><span class="att-a">غ</span> غياب</span><span><span class="att-p"><i></i>0</span> حضور وما جابش عروض اسعار (التلقائي)</span><span><span class="att-a" style="background:rgba(255,159,10,.18);color:#ff9f0a">غ</span> غايب بس العرض اتبعت متأخر (عروضه بتتحسب على اليوم اللي قبله)</span><span>اضغطي على أي صفر علشان تسجّلي غياب، أو افتحي أي رقم واختاري «غايب بس العرض اتبعت متأخر». لو مااخترتيش حاجة يبقى حضور.</span></div>
   </section>
 
   <section class="panel" aria-labelledby="repH">
@@ -429,9 +429,14 @@ function absentIn(name,days){ const a=attAll(); return days.filter(d=>a[d+"|"+na
 function presentZeroIn(name,days,per){ const a=attAll(); return days.filter(d=>!per[d] && a[d+"|"+name]!=="absent" && a[d+"|"+name]!=="late").length; }
 function lateIn(name,days,per){ const a=attAll(); return days.filter(d=>per[d] && a[d+"|"+name]==="late").length; }
 function attCell(name,d){ const v=attOf(name,d);
-  const inner = v==="absent" ? '<span class="att-a">غ</span>' : '<span class="att-p"><i></i>0</span>';
-  const tip = v==="absent" ? "غياب — اضغطي للتعديل" : (v==="present" ? "حضور وما جابش عروض اسعار — اضغطي للتعديل" : "حضور وما جابش عروض اسعار (تلقائي) — اضغطي لتسجيل غياب");
+  const inner = v==="absent" ? '<span class="att-a">غ</span>' : (v==="late" ? '<span class="att-a" style="background:rgba(255,159,10,.18);color:#ff9f0a">غ</span>' : '<span class="att-p"><i></i>0</span>');
+  const tip = v==="absent" ? "غياب — اضغطي للتعديل" : v==="late" ? "غايب بس العرض اتبعت متأخر — عروضه اتحسبت على اليوم اللي قبله. اضغطي للتعديل" : (v==="present" ? "حضور وما جابش عروض اسعار — اضغطي للتعديل" : "حضور وما جابش عروض اسعار (تلقائي) — اضغطي لتسجيل غياب");
   return `<td class="num z att" data-an="${esc(name)}" data-ad="${d}" role="button" tabindex="0" title="${tip}">${inner}</td>`; }
+function lateShift(name, per, days){ const moved={}, src={};
+  days.filter(d=>attOf(name,d)==="late").forEach(d=>{ if(!per[d]) return;
+    let prev=days.filter(x=>x<d && !isFri(x)).pop(); if(!prev){ prev=addDays(d,-1); if(isFri(prev)) prev=addDays(prev,-1); }
+    per[prev]=(per[prev]||0)+per[d]; moved[prev]=(moved[prev]||0)+per[d]; (src[prev]=src[prev]||[]).push(d); delete per[d]; });
+  return {moved,src}; }
 function attXls(b,d){ const v=attOf(b.name,d); if(v==="late") return "غياب (عروضه على اليوم اللي قبله)"; if(b.per[d]) return b.per[d]; return v==="absent"?"غياب":0; }
 const fmtDay = d => { const [y,m,dd] = d.split("-"); return `${+dd}/${+m}`; };
 const isFri = d => /^\d{4}-\d{2}-\d{2}$/.test(d||"") && new Date(d+"T00:00:00Z").getUTCDay()===5;
@@ -515,7 +520,7 @@ function renderBrief(){
   const [from,to,label]=periodRange(today);
   const QP=DATA.q.filter(r=>r[1]&&r[1]>=from&&r[1]<=to);
   const days=[...new Set(QP.map(r=>r[1]))].sort();
-  const per={}; QP.forEach(r=>{ if(r[0]===bi) per[r[1]]=(per[r[1]]||0)+1; });
+  const per={}; QP.forEach(r=>{ if(r[0]===bi) per[r[1]]=(per[r[1]]||0)+1; }); lateShift(name, per, days);
   const dayRank=d=>{ const cnt={}; QP.forEach(r=>{ if(r[1]===d) cnt[r[0]]=(cnt[r[0]]||0)+1; }); const me=cnt[bi]||0; if(!me) return "—"; return 1+Object.values(cnt).filter(v=>v>me).length; };
   let cum=0; const rows=days.map(d=>{ cum+=per[d]||0; return {d, n:per[d]||0, cum, rk:dayRank(d)}; }).reverse();
   const active=Object.keys(per).length, tot=c.total, avg=active?(tot/active):0;
@@ -545,11 +550,12 @@ function render(){
   const B = data.buyers.map((name,i)=>{
     const mine = Q.filter(r=>r[0]===i);
     const perDay = {}; mine.forEach(r=>perDay[r[1]]=(perDay[r[1]]||0)+1);
+    const sh = lateShift(name, perDay, days);
     const daily = days.map(d=>perDay[d]||0);
     const total = mine.length, active = Object.keys(perDay).length;
     const reqs = new Set(mine.map(r=>r[2])).size;
     const todayN = data.q.filter(r=>r[0]===i && r[1]===today).length;
-    return {name, bi:i, color:TEAM[i%TEAM.length], daily, total, active, reqs, todayN,
+    return {name, bi:i, color:TEAM[i%TEAM.length], daily, total, active, reqs, todayN, moved:sh.moved, src:sh.src,
             avg: active? total/active:0, perReq: reqs? total/reqs:0};
   }).sort((a,b)=> b.total-a.total || b.avg-a.avg);
   const n=B.length||1, teamTotal=B.reduce((a,b)=>a+b.total,0), teamAvg=teamTotal/n;
@@ -631,7 +637,7 @@ function render(){
   const olderFoot = hasOlder ? `<td class="num">${num(B.reduce((s,b)=>s+olderOf(b),0))}</td>` : "";
   document.getElementById("daily").innerHTML = show.length ? `<table><thead><tr><th>الموظف</th>${show.slice().reverse().map(d=>`<th class="num${isFri(d)?" fri":""}"${isFri(d)?' title="جمعة"':""}>${fmtDay(d)}</th>`).join("")}${olderHead}<th>الإجمالي</th><th>طلبات</th></tr></thead>
     <tbody>${B.map(b=>`<tr><td><span class="dotd" style="background:${b.color}"></span>${esc(b.name)}</td>${
-      idx.slice().reverse().map((i,k)=>{const x=b.daily[i], mx=dayMax[idx.length-1-k], d=days[i]; return x? `<td class="num click ${x===mx?"hi":""}" data-b="${b.bi}" data-from="${d}" data-to="${d}" role="button" tabindex="0" title="${attOf(b.name,d)==="late"?"غايب بس العرض اتبعت متأخر — ":""}اعرض الملفات">${x}${attOf(b.name,d)==="late"?'<span class="att-l">غ</span>':""}</td>` : attCell(b.name,d);}).join("")}${olderCell(b)}<td class="num ${b.total?"click":""}" ${b.total?`data-b="${b.bi}" data-from="${from}" data-to="${to}" role="button" tabindex="0"`:""}><b>${num(b.total)}</b></td><td class="num">${b.reqs}</td></tr>`).join("")}</tbody>
+      idx.slice().reverse().map((i,k)=>{const x=b.daily[i], mx=dayMax[idx.length-1-k], d=days[i]; return x? `<td class="num click ${x===mx?"hi":""}" data-b="${b.bi}" data-from="${d}" data-to="${d}"${b.src[d]?` data-extra="${b.src[d].join(",")}"`:""} role="button" tabindex="0" title="${b.src[d]?`منهم ${b.moved[d]} عرض من يوم غياب (${b.src[d].map(fmtDay).join("، ")}) — `:""}${attOf(b.name,d)==="late"?"غايب بس العرض اتبعت متأخر — ":""}اعرض الملفات">${x}${attOf(b.name,d)==="late"?'<span class="att-l">غ</span>':""}</td>` : attCell(b.name,d);}).join("")}${olderCell(b)}<td class="num ${b.total?"click":""}" ${b.total?`data-b="${b.bi}" data-from="${from}" data-to="${to}" role="button" tabindex="0"`:""}><b>${num(b.total)}</b></td><td class="num">${b.reqs}</td></tr>`).join("")}</tbody>
     <tfoot><tr><td>الإجمالي</td>${idx.slice().reverse().map(i=>`<td class="num">${num(B.reduce((a,b)=>a+b.daily[i],0))}</td>`).join("")}${olderFoot}<td class="num">${num(teamTotal)}</td><td class="num">${teamReqs}</td></tr></tfoot></table>` : `<p class="empty">مفيش عروض في الفترة دي.</p>`;
 
   /* pit lane */
@@ -674,9 +680,9 @@ async function save(filename, data){
   catch(e){ toast("ماقدرتش أحمّل الملف."); return false; }
 }
 let CUR = [];
-function openModal(bi, from, to){
-  const name = DATA.buyers[bi];
-  CUR = DATA.q.filter(r=>r[0]===bi && r[1]>=from && r[1]<=to).sort((a,b)=> a[1]<b[1]?1:-1);
+function openModal(bi, from, to, extra){
+  const name = DATA.buyers[bi]; const ex=(extra||"").split(",").filter(Boolean);
+  CUR = DATA.q.filter(r=>r[0]===bi && ((r[1]>=from && r[1]<=to) || ex.includes(r[1]))).sort((a,b)=> a[1]<b[1]?1:-1);
   document.getElementById("mTitle").textContent = `${name} · ${CUR.length} عرض سعر`;
   document.getElementById("mSub").innerHTML = from===to ? `بتاريخ ${fdH(from)}` : `من ${fmtDay(CUR.length?CUR[CUR.length-1][1]:from)} لحد ${fmtDay(CUR.length?CUR[0][1]:to)}`;
   const ready = CUR.filter(urlOf).length;
@@ -700,7 +706,7 @@ document.getElementById("mClose").addEventListener("click", closeModal);
 document.getElementById("mback").addEventListener("click", e=>{ if(e.target.id==="mback") closeModal(); });
 document.addEventListener("keydown", e=>{ if(e.key==="Escape") closeModal(); });
 document.addEventListener("click", e=>{
-  const c = e.target.closest("[data-b]"); if(c){ openModal(+c.dataset.b, c.dataset.from, c.dataset.to); return; }
+  const c = e.target.closest("[data-b]"); if(c){ openModal(+c.dataset.b, c.dataset.from, c.dataset.to, c.dataset.extra); return; }
   const d = e.target.closest("[data-dl]"); if(d){ const r=CUR[+d.dataset.dl]; downloadOne(r, d); }
 });
 document.addEventListener("keydown", e=>{ if((e.key==="Enter"||e.key===" ") && e.target.matches("[data-b]")){ e.preventDefault(); e.target.click(); } });
@@ -730,8 +736,7 @@ function stats(P){
   const days=[...new Set(Q.map(r=>r[1]))].sort();
   const B=DATA.buyers.map((name,i)=>{const mine=Q.filter(r=>r[0]===i); const per={}; mine.forEach(r=>per[r[1]]=(per[r[1]]||0)+1);
     /* يوم «غايب بس العرض اتبعت متأخر» = يوم غياب، وعروضه بتتحسب على اليوم اللي قبله */
-    const lateDays=days.filter(d=>attOf(name,d)==="late"); const moved={};
-    lateDays.forEach(d=>{ if(!per[d]) return; let prev=days.filter(x=>x<d && !isFri(x)).pop(); if(!prev){ prev=addDays(d,-1); if(isFri(prev)) prev=addDays(prev,-1); } per[prev]=(per[prev]||0)+per[d]; moved[prev]=(moved[prev]||0)+per[d]; delete per[d]; });
+    const lateDays=days.filter(d=>attOf(name,d)==="late"); const moved=lateShift(name, per, days).moved;
     const total=mine.length, active=Object.keys(per).length, reqs=new Set(mine.map(r=>r[2])).size, late=lateDays.length;
     return {name,bi:i,mine,per,moved,total,active,reqs,avg:active?total/active:0,perReq:reqs?total/reqs:0,absent:absentIn(name,days)+late,presentZero:presentZeroIn(name,days,per),late};}).sort((a,b)=>b.total-a.total||b.avg-a.avg);
   const n=B.length||1, teamTotal=B.reduce((a,b)=>a+b.total,0), teamAvg=teamTotal/n;
@@ -829,6 +834,7 @@ paint()})();</script>
   <h4 id="attWho"></h4><div class="sub" id="attDay"></div>
   <button type="button" data-v="absent"><span class="att-a">غ</span> غياب</button>
   <button type="button" data-v="present"><span class="att-p"><i></i>0</span> حضور وما جابش عروض اسعار</button>
+  <button type="button" data-v="late" id="attLateBtn"><span class="att-a" style="background:rgba(255,159,10,.18);color:#ff9f0a">غ</span> غايب بس العرض اتبعت متأخر</button>
   <button type="button" class="clear" data-v="">رجّعه للتلقائي (حضور)</button>
 </div>
 <script>(function(){
@@ -837,7 +843,9 @@ function close(){ pop.classList.remove("open"); cur=null; }
 function openFor(td){
   cur={n:td.dataset.an,d:td.dataset.ad};
   document.getElementById("attWho").textContent=cur.n;
-  document.getElementById("attDay").textContent="يوم "+cur.d+" — مفيش عروض متسجلة";
+  var bix=DATA.buyers.indexOf(cur.n), raw=DATA.q.filter(function(r){return r[0]===bix && r[1]===cur.d;}).length, lv=attOf(cur.n,cur.d)==="late";
+  document.getElementById("attLateBtn").style.display = raw ? "" : "none";
+  document.getElementById("attDay").textContent="يوم "+cur.d+(lv&&raw ? " — غياب، و"+raw+" عرض اتحسبوا على اليوم اللي قبله" : " — مفيش عروض متسجلة");
   var v=attOf(cur.n,cur.d); pop.querySelectorAll("button").forEach(function(b){b.setAttribute("aria-pressed", b.dataset.v===v && v ? "true":"false");});
   pop.classList.add("open");
   var r=td.getBoundingClientRect(), w=pop.offsetWidth, h=pop.offsetHeight;
